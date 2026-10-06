@@ -42,7 +42,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test:db": "node --test supabase/tests/db.test.mjs"
+    "test:db": "node --test \"supabase/tests/*.test.mjs\""
   },
   "private": true
 }

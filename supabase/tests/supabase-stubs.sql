@@ -53,3 +53,45 @@ create table storage.objects (
 
 alter table storage.objects enable row level security;
 grant select, insert on storage.objects to authenticated;
+
+-- pg_cron and pg_net stand-ins: jobs are recorded, not run, and HTTP posts are
+-- recorded instead of sent.
+create schema cron;
+
+create table cron.jobs (
+  name text primary key,
+  schedule text not null,
+  command text not null
+);
+
+create function cron.schedule(job_name text, schedule text, command text)
+returns bigint
+language sql
+as $$
+  insert into cron.jobs (name, schedule, command)
+  values (job_name, schedule, command)
+  on conflict (name) do update set schedule = excluded.schedule, command = excluded.command;
+  select 1::bigint;
+$$;
+
+create schema net;
+
+create table net.requests (
+  id bigint generated always as identity primary key,
+  url text not null,
+  body jsonb,
+  headers jsonb
+);
+
+create function net.http_post(
+  url text,
+  body jsonb default '{}'::jsonb,
+  params jsonb default '{}'::jsonb,
+  headers jsonb default '{"Content-Type": "application/json"}'::jsonb,
+  timeout_milliseconds int default 2000
+)
+returns bigint
+language sql
+as $$
+  insert into net.requests (url, body, headers) values (url, body, headers) returning id;
+$$;

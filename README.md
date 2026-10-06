@@ -6,7 +6,7 @@ A gentle daily check-in between an aging parent and their family. At times the o
 
 ## Status
 
-Pilot build: Expo SDK 57, TypeScript, and Expo Router, with a single placeholder screen. The database schema and access rules are in place and tested. The scheduler and the app screens are not built yet.
+Pilot build: Expo SDK 57, TypeScript, and Expo Router, with a single placeholder screen. The database schema, access rules, and scheduler are in place and tested. The app screens are not built yet.
 
 The full concept test plan lives in a private doc: [Daily Check-In: Concept Test Plan](https://claude.ai/code/artifact/e9e11eff-a810-4d72-86e7-1294340414ac).
 
@@ -82,6 +82,30 @@ Access rules live in the database, so the app cannot get around them.
 
 The schema is in `supabase/migrations/`. The functions the app calls are `create_circle`, `create_invite`, `redeem_invite`, `approve_member`, `remove_member`, `respond_checkin`, and `snooze_checkin`.
 
+### The scheduler
+
+A job runs every minute inside the database (pg_cron), with nothing else to deploy. Each run:
+
+1. Creates today's and tomorrow's check-ins from each plan, in the parent's time zone. Only future times are created, so a new plan never starts with a miss.
+2. Prompts the parent at check-in time.
+3. Reminds the parent, depending on firmness, unless they tapped Later.
+4. Marks the check-in missed when the wait runs out, and alerts the organizer.
+5. If it is still missed 15 minutes later, alerts everyone else active in the circle.
+
+When the parent checks in, the organizer hears about it, and so does anyone who was alerted about a miss, so they can stand down.
+
+| Setting | What happens |
+| --- | --- |
+| Gentle | The first prompt only |
+| Normal | Two reminders, 20 minutes apart |
+| Persistent | A reminder every 10 minutes until the wait runs out |
+| Later | Pauses reminders for 30 minutes and adds 30 minutes to the wait |
+| Rest of the circle | Alerted 15 minutes after the organizer |
+
+These timings are first guesses for the pilot.
+
+Notifications wait in an outbox table and go to Expo's push service in batches of up to 100 (pg_net), one message per registered device. Changing the plan's times or time zone replaces upcoming check-ins that have not started.
+
 ### Setting up a Supabase project
 
 1. Create a project at [supabase.com](https://supabase.com).
@@ -98,8 +122,9 @@ The schema is in `supabase/migrations/`. The functions the app calls are `create
 
 ### Still to build
 
-- The scheduler: creates each day's check-ins, sends reminders, marks misses, and alerts the family through Expo push.
 - The app screens: role choice, joining, the parent's check-in screen, the organizer's setup, and the family feed.
+- Registering each device's push token when someone signs in.
+- Checking Expo's delivery receipts and removing tokens for uninstalled apps.
 
 ## Open decisions
 
