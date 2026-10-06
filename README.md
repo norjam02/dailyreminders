@@ -1,6 +1,6 @@
 # Daily Check-In (working name)
 
-A gentle daily check-in between an aging parent and their family. At times the adult child sets, the parent gets a notification and answers with one tap, a photo, or a selfie, plus an optional friendly reply. If a check-in is missed, the parent is reminded first, then the family is told.
+A gentle daily check-in between an aging parent and their family. At times the organizer sets, the parent gets a notification and answers with one tap, a photo, or a selfie, plus an optional friendly reply. If a check-in is missed, the parent is reminded first, then the family is told.
 
 "Daily Check-In" is a placeholder. The real name is still to be chosen.
 
@@ -17,14 +17,15 @@ Ten parent and child pairs use this app for 14 days, starting Monday, November 1
 ### In scope
 
 - **Roles.** Child, Parent, Caregiver, and Other family, chosen on first launch.
-- **Circles and join codes.** The child creates a circle and gets a short code for each person. Each code works once and expires after a day, and the child approves every new member.
-- **Check-in modes.** Button, photo, or selfie. The child picks the mode for each parent and can change it at any time. A parent who cannot manage a photo that day can tap a plain button instead, marked "button only."
+- **Organizer.** The subscriber who sets up the circle and manages it. The organizer joins as the parent's child or as a caregiver, for example a paid caregiver or a friend looking after someone who is not their own parent.
+- **Circles and join codes.** The organizer creates a circle and gets a short code for each person. Each code works once and expires after a day, and the organizer approves every new member.
+- **Check-in modes.** Button, photo, or selfie. The organizer picks the mode for each parent and can change it at any time. A parent who cannot manage a photo that day can tap a plain button instead, marked "button only."
 - **Photo prompts.** For photo mode: breakfast, the view from a window, the coffee cup, or anything.
-- **Schedule.** One to three check-ins a day, at times the child picks.
+- **Schedule.** One to three check-ins a day, at times the organizer picks.
 - **Reminder firmness.** Gentle (one reminder), normal (a reminder, then two more over the next hour), or persistent (keeps reminding until answered, up to the wait time).
-- **Quick replies.** The child picks up to four for the parent to see, from a starter set: "Love you!", "I'm on it", "Thanks for checking", "Doing fine." Optional on any check-in.
+- **Quick replies.** The organizer picks up to four for the parent to see, from a starter set: "Love you!", "I'm on it", "Thanks for checking", "Doing fine." Optional on any check-in.
 - **Later.** A one-time button that pushes a reminder back without counting as a miss.
-- **Missed check-ins.** After the wait the child chose (30 minutes, 1 hour, or 2 hours), the child is alerted, then caregivers and other family.
+- **Missed check-ins.** After the wait the organizer chose (30 minutes, 1 hour, or 2 hours), the organizer is alerted, then the rest of the circle.
 - **Family feed.** The circle sees check-ins, quick replies, and photos as they arrive.
 - **Safety notice.** Every check-in screen shows "In an emergency, call 911."
 
@@ -36,7 +37,7 @@ Ten parent and child pairs use this app for 14 days, starting Monday, November 1
 | Later | Pushes reminders back 30 minutes, once per check-in |
 | Reminder firmness | Normal |
 | Wait before alerting family | 1 hour |
-| Personal note from the child | Off |
+| Personal note from the organizer | Off |
 
 These are starting guesses to test, not findings.
 
@@ -61,10 +62,10 @@ The backend is [Supabase](https://supabase.com): Postgres, sign-in, and photo st
 ### Data model
 
 - **profiles**: a display name for each signed-in person.
-- **circles**: one parent and the family around them. The child creates it.
+- **circles**: one parent and the family and caregivers around them, with the organizer who set it up.
 - **circle_members**: each person's role (child, parent, caregiver, family) and status (pending, active, removed). One parent per circle.
 - **invites**: one-time join codes, six characters without look-alikes, expiring after a day.
-- **checkin_plans**: the child's settings for the circle: mode, photo prompt, times, time zone, firmness, wait, quick replies, and a personal note.
+- **checkin_plans**: the organizer's settings for the circle: mode, photo prompt, times, time zone, firmness, wait, quick replies, and a personal note.
 - **checkins**: one row per scheduled check-in, with the parent's answer.
 - **push_tokens**: each device's notification token.
 - **checkin-photos**: a private storage bucket, with files at `<circle_id>/<file>`.
@@ -73,8 +74,8 @@ The backend is [Supabase](https://supabase.com): Postgres, sign-in, and photo st
 
 Access rules live in the database, so the app cannot get around them.
 
-- The child creates the circle, makes join codes, approves or removes people, and edits the plan.
-- Anyone signs in and joins with a code, then waits as pending until the child approves them. Parents can sign in anonymously, with no email or password; children need a real account.
+- The organizer, a child or a caregiver, creates the circle, makes join codes, approves or removes people, and edits the plan. Other members, including other children and caregivers, cannot.
+- Anyone signs in and joins with a code, then waits as pending until the organizer approves them. Parents can sign in anonymously, with no email or password; organizers need a real account, since they own the subscription.
 - Active members see the circle, its members, the plan, check-ins, and photos. Pending members see only the circle's name.
 - Only the parent answers check-ins and uploads photos, and only into their own circle.
 - Check-ins are created and escalated by the scheduler, which runs with the service role. The app cannot write them directly.
@@ -98,7 +99,7 @@ The schema is in `supabase/migrations/`. The functions the app calls are `create
 ### Still to build
 
 - The scheduler: creates each day's check-ins, sends reminders, marks misses, and alerts the family through Expo push.
-- The app screens: role choice, joining, the parent's check-in screen, the child's setup, and the family feed.
+- The app screens: role choice, joining, the parent's check-in screen, the organizer's setup, and the family feed.
 
 ## Open decisions
 

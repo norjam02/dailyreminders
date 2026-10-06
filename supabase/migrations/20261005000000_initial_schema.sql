@@ -1,9 +1,10 @@
 -- Daily Check-In: initial schema for the pilot.
 --
--- A circle is one parent plus the family around them. The child creates the
--- circle, invites people with one-time codes, approves them, and sets the
--- check-in plan. The parent answers check-ins. Everyone in the circle sees
--- check-ins and photos.
+-- A circle is one parent plus the family and caregivers around them. The
+-- organizer is the subscriber who set it up, either the parent's child or a
+-- caregiver. The organizer invites people with one-time codes, approves them,
+-- and sets the check-in plan. The parent answers check-ins. Everyone in the
+-- circle sees check-ins and photos.
 --
 -- Writes that need checks (creating circles, joining, approving, answering a
 -- check-in) go through the functions at the bottom of this file. Tables are
@@ -34,7 +35,8 @@ create table public.profiles (
 create table public.circles (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) between 1 and 60),
-  created_by uuid not null references public.profiles (id),
+  -- The subscriber who set up the circle and manages it.
+  organizer_id uuid not null references public.profiles (id),
   created_at timestamptz not null default now()
 );
 
@@ -59,7 +61,7 @@ create unique index circle_members_one_parent
 create table public.invites (
   code text primary key,
   circle_id uuid not null references public.circles (id) on delete cascade,
-  role public.member_role not null check (role <> 'child'),
+  role public.member_role not null,
   created_by uuid not null references public.profiles (id),
   created_at timestamptz not null default now(),
   expires_at timestamptz not null default now() + interval '1 day',
@@ -161,6 +163,24 @@ as $$
   );
 $$;
 
+-- The organizer manages the circle: codes, approvals, removals, and the plan.
+create function public.is_organizer(p_circle uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.circles c
+    join public.circle_members m on m.circle_id = c.id and m.user_id = c.organizer_id
+    where c.id = p_circle
+      and c.organizer_id = (select auth.uid())
+      and m.status = 'active'
+  );
+$$;
+
 -- Pending members can see the circle they asked to join.
 create function public.is_member_or_pending(p_circle uuid)
 returns boolean
@@ -178,7 +198,7 @@ as $$
 $$;
 
 -- True when the caller is active in a circle that the other person is in or
--- has asked to join, so the child can see who is waiting for approval.
+-- has asked to join, so the organizer can see who is waiting for approval.
 create function public.shares_circle_with(p_other uuid)
 returns boolean
 language sql
@@ -241,31 +261,31 @@ create policy "See circles you belong to"
   on public.circles for select to authenticated
   using (public.is_member_or_pending(id));
 
-create policy "Child renames the circle"
+create policy "Organizer renames the circle"
   on public.circles for update to authenticated
-  using (public.has_role(id, 'child'))
-  with check (public.has_role(id, 'child'));
+  using (public.is_organizer(id))
+  with check (public.is_organizer(id));
 
 create policy "See members of your circles"
   on public.circle_members for select to authenticated
   using (user_id = (select auth.uid()) or public.is_active_member(circle_id));
 
-create policy "Child sees the circle's join codes"
+create policy "Organizer sees the circle's join codes"
   on public.invites for select to authenticated
-  using (public.has_role(circle_id, 'child'));
+  using (public.is_organizer(circle_id));
 
 create policy "Members see the check-in plan"
   on public.checkin_plans for select to authenticated
   using (public.is_active_member(circle_id));
 
-create policy "Child creates the check-in plan"
+create policy "Organizer creates the check-in plan"
   on public.checkin_plans for insert to authenticated
-  with check (public.has_role(circle_id, 'child'));
+  with check (public.is_organizer(circle_id));
 
-create policy "Child edits the check-in plan"
+create policy "Organizer edits the check-in plan"
   on public.checkin_plans for update to authenticated
-  using (public.has_role(circle_id, 'child'))
-  with check (public.has_role(circle_id, 'child'));
+  using (public.is_organizer(circle_id))
+  with check (public.is_organizer(circle_id));
 
 create policy "Members see check-ins"
   on public.checkins for select to authenticated
@@ -318,9 +338,14 @@ create trigger checkin_plans_stamp
 -- Functions the app calls
 -- ---------------------------------------------------------------------------
 
--- The child creates a circle and becomes its first active member. Children
--- need a real account, not an anonymous one, since they own the subscription.
-create function public.create_circle(p_name text, p_display_name text)
+-- The subscriber creates a circle and becomes its organizer, joining as the
+-- parent's child or as a caregiver. Organizers need a real account, not an
+-- anonymous one, since they own the subscription.
+create function public.create_circle(
+  p_name text,
+  p_display_name text,
+  p_role public.member_role default 'child'
+)
 returns uuid
 language plpgsql
 security definer
@@ -336,17 +361,20 @@ begin
   if coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false) then
     raise exception 'Create an account to start a circle.';
   end if;
+  if p_role not in ('child', 'caregiver') then
+    raise exception 'The person who sets up a circle joins as a child or a caregiver.';
+  end if;
 
   insert into public.profiles (id, display_name)
   values (v_uid, p_display_name)
   on conflict (id) do update set display_name = excluded.display_name;
 
-  insert into public.circles (name, created_by)
+  insert into public.circles (name, organizer_id)
   values (p_name, v_uid)
   returning id into v_circle;
 
   insert into public.circle_members (circle_id, user_id, role, status, approved_at)
-  values (v_circle, v_uid, 'child', 'active', now());
+  values (v_circle, v_uid, p_role, 'active', now());
 
   return v_circle;
 end;
@@ -371,7 +399,7 @@ begin
 end;
 $$;
 
--- The child makes a one-time code for a parent, caregiver, or family member.
+-- The organizer makes a one-time code for anyone joining the circle.
 create function public.create_invite(p_circle uuid, p_role public.member_role)
 returns text
 language plpgsql
@@ -382,11 +410,8 @@ declare
   v_uid uuid := (select auth.uid());
   v_code text;
 begin
-  if not public.has_role(p_circle, 'child') then
+  if not public.is_organizer(p_circle) then
     raise exception 'Only the person who set up this circle can invite people.';
-  end if;
-  if p_role = 'child' then
-    raise exception 'A circle has one child account.';
   end if;
   if p_role = 'parent' and exists (
     select 1 from public.circle_members
@@ -409,7 +434,7 @@ end;
 $$;
 
 -- Anyone signed in, including an anonymous parent, joins with a code. They
--- wait as pending until the child approves them.
+-- wait as pending until the organizer approves them.
 create function public.redeem_invite(p_code text, p_display_name text)
 returns uuid
 language plpgsql
@@ -474,7 +499,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  if not public.has_role(p_circle, 'child') then
+  if not public.is_organizer(p_circle) then
     raise exception 'Only the person who set up this circle can approve people.';
   end if;
 
@@ -488,7 +513,7 @@ begin
 end;
 $$;
 
--- The child can remove anyone else. Anyone but the child can leave.
+-- The organizer can remove anyone else. Anyone but the organizer can leave.
 create function public.remove_member(p_circle uuid, p_user uuid)
 returns void
 language plpgsql
@@ -499,10 +524,10 @@ declare
   v_uid uuid := (select auth.uid());
 begin
   if p_user = v_uid then
-    if public.has_role(p_circle, 'child') then
+    if public.is_organizer(p_circle) then
       raise exception 'The person who set up the circle cannot leave it.';
     end if;
-  elsif not public.has_role(p_circle, 'child') then
+  elsif not public.is_organizer(p_circle) then
     raise exception 'Only the person who set up this circle can remove people.';
   end if;
 
@@ -602,11 +627,12 @@ revoke execute on function
   public.is_valid_timezone(text),
   public.is_active_member(uuid),
   public.has_role(uuid, public.member_role),
+  public.is_organizer(uuid),
   public.is_member_or_pending(uuid),
   public.shares_circle_with(uuid),
   public.photo_circle(text),
   public.stamp_checkin_plan(),
-  public.create_circle(text, text),
+  public.create_circle(text, text, public.member_role),
   public.new_invite_code(),
   public.create_invite(uuid, public.member_role),
   public.redeem_invite(text, text),
@@ -620,11 +646,12 @@ grant execute on function
   public.is_valid_timezone(text),
   public.is_active_member(uuid),
   public.has_role(uuid, public.member_role),
+  public.is_organizer(uuid),
   public.is_member_or_pending(uuid),
   public.shares_circle_with(uuid),
   public.photo_circle(text),
   public.stamp_checkin_plan(),
-  public.create_circle(text, text),
+  public.create_circle(text, text, public.member_role),
   public.create_invite(uuid, public.member_role),
   public.redeem_invite(text, text),
   public.approve_member(uuid, uuid),

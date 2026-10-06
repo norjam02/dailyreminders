@@ -17,6 +17,8 @@ const users = {
   caregiver: "00000000-0000-4000-8000-000000000003",
   stranger: "00000000-0000-4000-8000-000000000004",
   secondParent: "00000000-0000-4000-8000-000000000005",
+  organizingCaregiver: "00000000-0000-4000-8000-000000000006",
+  secondChild: "00000000-0000-4000-8000-000000000007",
 };
 
 let db;
@@ -78,7 +80,7 @@ describe("circles and joining", () => {
     assert.deepEqual(member.rows, [{ role: "child", status: "active" }]);
   });
 
-  test("only the child can make join codes", async () => {
+  test("only the organizer can make join codes", async () => {
     await assert.rejects(
       as(users.stranger, "select public.create_invite($1, 'parent')", [circle]),
       /Only the person who set up this circle can invite people/,
@@ -135,7 +137,7 @@ describe("circles and joining", () => {
     assert.deepEqual(pending.rows, [{ display_name: "Mom" }]);
   });
 
-  test("only the child can approve", async () => {
+  test("only the organizer can approve", async () => {
     await assert.rejects(
       as(users.parent, "select public.approve_member($1, $2)", [circle, users.parent]),
       /Only the person who set up this circle can approve people/,
@@ -151,6 +153,13 @@ describe("circles and joining", () => {
     await as(users.child, "select public.approve_member($1, $2)", [circle, users.caregiver]);
     const roles = await as(users.caregiver, "select role from public.circle_members order by role");
     assert.deepEqual(roles.rows.map((r) => r.role), ["child", "parent", "caregiver"]);
+  });
+
+  test("a caregiver who did not set up the circle cannot make codes", async () => {
+    await assert.rejects(
+      as(users.caregiver, "select public.create_invite($1, 'family')", [circle]),
+      /Only the person who set up this circle can invite people/,
+    );
   });
 
   describe("check-in plan", () => {
@@ -301,8 +310,52 @@ describe("circles and joining", () => {
         /permission denied/,
       );
       await assert.rejects(
-        as(users.stranger, "insert into public.circles (name, created_by) values ('x', $1)", [users.stranger]),
+        as(users.stranger, "insert into public.circles (name, organizer_id) values ('x', $1)", [users.stranger]),
         /permission denied/,
+      );
+    });
+  });
+
+  describe("a caregiver as organizer", () => {
+    let caregiverCircle;
+
+    test("the organizer joins as a child or a caregiver, not as the parent", async () => {
+      await assert.rejects(
+        as(users.organizingCaregiver, "select public.create_circle('Dad', 'Sam', 'parent')"),
+        /joins as a child or a caregiver/,
+      );
+    });
+
+    test("a caregiver sets up a circle and manages it", async () => {
+      caregiverCircle = await value(users.organizingCaregiver, "select public.create_circle('Dad', 'Sam', 'caregiver')");
+      const me = await as(users.organizingCaregiver, "select role, status from public.circle_members where circle_id = $1", [caregiverCircle]);
+      assert.deepEqual(me.rows, [{ role: "caregiver", status: "active" }]);
+
+      const parentCode = await value(users.organizingCaregiver, "select public.create_invite($1, 'parent')", [caregiverCircle]);
+      await as(users.secondParent, "select public.redeem_invite($1, 'Dad')", [parentCode], { anonymous: true });
+      await as(users.organizingCaregiver, "select public.approve_member($1, $2)", [caregiverCircle, users.secondParent]);
+
+      const childCode = await value(users.organizingCaregiver, "select public.create_invite($1, 'child')", [caregiverCircle]);
+      await as(users.secondChild, "select public.redeem_invite($1, 'Alex')", [childCode]);
+      await as(users.organizingCaregiver, "select public.approve_member($1, $2)", [caregiverCircle, users.secondChild]);
+
+      await as(users.organizingCaregiver, "insert into public.checkin_plans (circle_id, timezone) values ($1, 'America/New_York')", [caregiverCircle]);
+      assert.equal(await value(users.secondParent, "select timezone from public.checkin_plans where circle_id = $1", [caregiverCircle]), "America/New_York");
+    });
+
+    test("a child who joined someone else's circle does not manage it", async () => {
+      await assert.rejects(
+        as(users.secondChild, "select public.create_invite($1, 'family')", [caregiverCircle]),
+        /Only the person who set up this circle can invite people/,
+      );
+      await as(users.secondChild, "update public.checkin_plans set mode = 'selfie' where circle_id = $1", [caregiverCircle]);
+      assert.equal(await value(users.organizingCaregiver, "select mode from public.checkin_plans where circle_id = $1", [caregiverCircle]), "button");
+    });
+
+    test("the organizing caregiver cannot leave their own circle", async () => {
+      await assert.rejects(
+        as(users.organizingCaregiver, "select public.remove_member($1, $2)", [caregiverCircle, users.organizingCaregiver]),
+        /cannot leave/,
       );
     });
   });
