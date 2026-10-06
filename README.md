@@ -6,7 +6,7 @@ A gentle daily check-in between an aging parent and their family. At times the a
 
 ## Status
 
-Pilot build, just scaffolded: Expo SDK 57, TypeScript, and Expo Router, with a single placeholder screen. Nothing below is built yet.
+Pilot build: Expo SDK 57, TypeScript, and Expo Router, with a single placeholder screen. The database schema and access rules are in place and tested. The scheduler and the app screens are not built yet.
 
 The full concept test plan lives in a private doc: [Daily Check-In: Concept Test Plan](https://claude.ai/code/artifact/e9e11eff-a810-4d72-86e7-1294340414ac).
 
@@ -32,7 +32,8 @@ Ten parent and child pairs use this app for 14 days, starting Monday, November 1
 
 | Setting | Default |
 | --- | --- |
-| Check-ins per day | One, mid-morning |
+| Check-ins per day | One, at 10:00 in the parent's time zone |
+| Later | Pushes reminders back 30 minutes, once per check-in |
 | Reminder firmness | Normal |
 | Wait before alerting family | 1 hour |
 | Personal note from the child | Off |
@@ -53,9 +54,54 @@ These are starting guesses to test, not findings.
 - Photos and selfies are used only for the pilot and deleted at the end.
 - Either person can stop at any time.
 
+## Backend
+
+The backend is [Supabase](https://supabase.com): Postgres, sign-in, and photo storage. Push notifications will go through Expo's push service.
+
+### Data model
+
+- **profiles**: a display name for each signed-in person.
+- **circles**: one parent and the family around them. The child creates it.
+- **circle_members**: each person's role (child, parent, caregiver, family) and status (pending, active, removed). One parent per circle.
+- **invites**: one-time join codes, six characters without look-alikes, expiring after a day.
+- **checkin_plans**: the child's settings for the circle: mode, photo prompt, times, time zone, firmness, wait, quick replies, and a personal note.
+- **checkins**: one row per scheduled check-in, with the parent's answer.
+- **push_tokens**: each device's notification token.
+- **checkin-photos**: a private storage bucket, with files at `<circle_id>/<file>`.
+
+### Who can do what
+
+Access rules live in the database, so the app cannot get around them.
+
+- The child creates the circle, makes join codes, approves or removes people, and edits the plan.
+- Anyone signs in and joins with a code, then waits as pending until the child approves them. Parents can sign in anonymously, with no email or password; children need a real account.
+- Active members see the circle, its members, the plan, check-ins, and photos. Pending members see only the circle's name.
+- Only the parent answers check-ins and uploads photos, and only into their own circle.
+- Check-ins are created and escalated by the scheduler, which runs with the service role. The app cannot write them directly.
+
+The schema is in `supabase/migrations/`. The functions the app calls are `create_circle`, `create_invite`, `redeem_invite`, `approve_member`, `remove_member`, `respond_checkin`, and `snooze_checkin`.
+
+### Setting up a Supabase project
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. In the project's Auth settings, turn on anonymous sign-ins. The setting in `supabase/config.toml` only applies to a local Supabase.
+3. Link this repo and push the schema:
+
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <your-project-ref>
+   npx supabase db push
+   ```
+
+4. Copy `.env.example` to `.env.local` and fill in the project URL and publishable key. `.env.local` is ignored by git.
+
+### Still to build
+
+- The scheduler: creates each day's check-ins, sends reminders, marks misses, and alerts the family through Expo push.
+- The app screens: role choice, joining, the parent's check-in screen, the child's setup, and the family feed.
+
 ## Open decisions
 
-- **Backend** for accounts, circles, push notifications, and photo storage. Not yet chosen.
 - **Final name**, with a trademark, domain, and App Store check.
 
 ## Running it
@@ -64,7 +110,10 @@ These are starting guesses to test, not findings.
 npm install
 npx expo start      # dev server
 npm run typecheck   # TypeScript check
+npm run test:db     # schema and access-rule tests, in an in-memory Postgres
 ```
+
+The database tests need no Docker and no Supabase project. They run the migrations against small stand-ins for Supabase's auth and storage, in `supabase/tests/`.
 
 Remote push notifications need a development build (`npx eas-cli@latest build --profile development`), not Expo Go.
 
