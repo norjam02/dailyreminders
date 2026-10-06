@@ -30,7 +30,7 @@ function Welcome() {
         </T>
       </View>
       <View style={styles.actions}>
-        <Button label="Set up check-ins for someone" onPress={() => router.push("/sign-in")} />
+        <Button label="Set up check-ins" onPress={() => router.push("/sign-in")} />
         <Button label="I have a join code" variant="secondary" onPress={() => router.push("/join")} />
       </View>
     </Screen>

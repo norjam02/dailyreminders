@@ -48,12 +48,17 @@ export default function Invite() {
     );
   }
 
+  const isParent = current?.role === "parent";
   const options: { role: MemberRole; label: string; description: string }[] = [
     ...(hasParent
       ? []
       : [{ role: "parent" as const, label: parentName, description: "The person who checks in each day." }]),
-    { role: "child", label: "Their child", description: `Hears about check-ins and missed ones.` },
-    { role: "caregiver", label: "A caregiver", description: "Someone who helps look after them." },
+    { role: "child", label: isParent ? "Your child" : "Their child", description: `Hears about check-ins and missed ones.` },
+    {
+      role: "caregiver",
+      label: "A caregiver",
+      description: isParent ? "Someone who helps look after you." : "Someone who helps look after them.",
+    },
     { role: "family", label: "Other family or a friend", description: "Hears when a check-in is missed." },
   ];
 

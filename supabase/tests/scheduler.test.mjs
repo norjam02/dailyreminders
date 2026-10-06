@@ -10,6 +10,8 @@ const users = {
   organizer: "00000000-0000-4000-8000-000000000101",
   parent: "00000000-0000-4000-8000-000000000102",
   caregiver: "00000000-0000-4000-8000-000000000103",
+  selfParent: "00000000-0000-4000-8000-000000000104",
+  son: "00000000-0000-4000-8000-000000000105",
 };
 
 let db;
@@ -231,6 +233,32 @@ describe("changing the plan", () => {
     await tick("2026-11-19T12:00:00Z");
     const rows = await db.query("select count(*)::int as n from public.checkins where circle_id = $1", [lonely]);
     assert.equal(rows.rows[0].n, 0);
+  });
+});
+
+describe("a parent who is the organizer", () => {
+  let own;
+  const slot = "2026-11-20T17:00:00Z"; // 10:00 in Denver (UTC-7)
+
+  test("a miss alerts the rest of the circle right away, not the parent", async () => {
+    own = (await as(users.selfParent, "select public.create_circle('Ruth', 'Ruth', 'parent') as id")).rows[0].id;
+    const code = (await as(users.selfParent, "select public.create_invite($1, 'child') as code", [own])).rows[0].code;
+    await as(users.son, "select public.redeem_invite($1, 'Ben')", [code]);
+    await as(users.selfParent, "select public.approve_member($1, $2)", [own, users.son]);
+    await as(users.selfParent, "insert into public.checkin_plans (circle_id, timezone, firmness) values ($1, 'America/Denver', 'gentle')", [own]);
+
+    await tick("2026-11-20T16:00:00Z");
+    await tick(slot);
+    await newMessages();
+    await tick("2026-11-20T18:00:00Z");
+    assert.deepEqual(await newMessages(), [
+      ["son", "Ruth hasn't checked in", "The 10:00 AM check-in is still open. A call might be good."],
+    ]);
+  });
+
+  test("no second alert 15 minutes later", async () => {
+    await tick("2026-11-20T18:15:00Z");
+    assert.deepEqual(await newMessages(), []);
   });
 });
 

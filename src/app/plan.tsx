@@ -49,6 +49,7 @@ export default function Plan() {
   const { current, isOrganizer } = useSession();
   const circleId = current?.circle.id;
   const parentName = current?.circle.name ?? "your parent";
+  const isParent = current?.role === "parent";
 
   const [plan, setPlan] = useState<CheckinPlan | null>(null);
   const [exists, setExists] = useState(false);
@@ -126,12 +127,12 @@ export default function Plan() {
       : await supabase.from("checkin_plans").insert({ circle_id: circleId, ...fields });
     setBusy(false);
     if (saveError) return setError(errorMessage(saveError));
-    router.replace("/home");
+    router.replace("/");
   }
 
   return (
     <Screen>
-      <Section title={`How ${parentName} checks in`}>
+      <Section title={isParent ? "How you check in" : `How ${parentName} checks in`}>
         {MODES.map((m) => (
           <Choice
             key={m.mode}
@@ -172,7 +173,7 @@ export default function Plan() {
         </Chips>
       </Section>
 
-      <Section title={`${parentName}'s time zone`}>
+      <Section title={isParent ? "Your time zone" : `${parentName}'s time zone`}>
         <Chips>
           {US_TIME_ZONES.map((z) => (
             <Chip
@@ -210,7 +211,7 @@ export default function Plan() {
         </Chips>
       </Section>
 
-      <Section title="Quick replies" hint={`${parentName} can add one of these when checking in.`}>
+      <Section title="Quick replies" hint={`${isParent ? "You" : parentName} can add one of these when checking in.`}>
         <Chips>
           {STARTER_REPLIES.map((r) => (
             <Chip key={r} label={r} selected={plan.quick_replies.includes(r)} onPress={() => toggleReply(r)} />

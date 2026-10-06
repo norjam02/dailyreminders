@@ -17,7 +17,7 @@ Ten parent and child pairs use this app for 14 days, starting Monday, November 1
 ### In scope
 
 - **Roles.** Child, Parent, Caregiver, and Other family, chosen on first launch.
-- **Organizer.** The subscriber who sets up the circle and manages it. The organizer joins as the parent's child or as a caregiver, for example a paid caregiver or a friend looking after someone who is not their own parent.
+- **Organizer.** The subscriber who sets up the circle and manages it. Anyone can be the organizer: the parent themselves, their child, a caregiver (for example a paid caregiver or a friend), or another family member. When the parent is the organizer, a missed check-in alerts the rest of the circle right away.
 - **Circles and join codes.** The organizer creates a circle and gets a short code for each person. Each code works once and expires after a day, and the organizer approves every new member.
 - **Check-in modes.** Button, photo, or selfie. The organizer picks the mode for each parent and can change it at any time. A parent who cannot manage a photo that day can tap a plain button instead, marked "button only."
 - **Photo prompts.** For photo mode: breakfast, the view from a window, the coffee cup, or anything.
@@ -74,7 +74,7 @@ The backend is [Supabase](https://supabase.com): Postgres, sign-in, and photo st
 
 Access rules live in the database, so the app cannot get around them.
 
-- The organizer, a child or a caregiver, creates the circle, makes join codes, approves or removes people, and edits the plan. Other members, including other children and caregivers, cannot.
+- The organizer (the parent, a child, a caregiver, or other family) creates the circle, makes join codes, approves or removes people, and edits the plan. Other members, including other children and caregivers, cannot.
 - Anyone signs in and joins with a code, then waits as pending until the organizer approves them. Parents can sign in anonymously, with no email or password; organizers need a real account, since they own the subscription.
 - Active members see the circle, its members, the plan, check-ins, and photos. Pending members see only the circle's name.
 - Only the parent answers check-ins and uploads photos, and only into their own circle.
@@ -89,7 +89,7 @@ A job runs every minute inside the database (pg_cron), with nothing else to depl
 1. Creates today's and tomorrow's check-ins from each plan, in the parent's time zone. Only future times are created, so a new plan never starts with a miss.
 2. Prompts the parent at check-in time.
 3. Reminds the parent, depending on firmness, unless they tapped Later.
-4. Marks the check-in missed when the wait runs out, and alerts the organizer.
+4. Marks the check-in missed when the wait runs out, and alerts the organizer. If the parent is the organizer, it alerts everyone else in the circle instead.
 5. If it is still missed 15 minutes later, alerts everyone else active in the circle.
 
 When the parent checks in, the organizer hears about it, and so does anyone who was alerted about a miss, so they can stand down.
@@ -133,12 +133,12 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
 | --- | --- | --- |
 | Welcome | Everyone | Set up check-ins, or join with a code |
 | Sign in | Organizer | Email address, then the six-digit code from the email |
-| Set up a circle | Organizer | Who the check-ins are for, your name, and whether you're their child or caregiver |
+| Set up a circle | Organizer | Who the check-ins are for (yourself, your parent, someone you care for, or another family member) and your name |
 | Check-in settings | Organizer | Mode, photo prompt, up to three times, time zone, reminders, wait, quick replies, a personal note |
 | Invite someone | Organizer | Makes a join code and shares it |
 | Join with a code | Anyone | Name and code; signs in anonymously if needed |
 | Almost there | New members | Waits for approval and updates on its own |
-| Check-in | Parent | One big button, photo, or selfie; quick replies; Later; "In an emergency, call 911" |
+| Check-in | Parent | One big button, photo, or selfie; quick replies; Later; "In an emergency, call 911". A parent who organizes also gets settings, invites, and people here. |
 | Home | Organizer and family | Recent check-ins with photos and replies, what's next, people waiting to join |
 | People | Everyone | The circle's members; the organizer approves and removes, others can leave |
 

@@ -3,7 +3,7 @@
 
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -31,7 +31,7 @@ function promptText(plan: CheckinPlan): string {
 }
 
 export default function CheckinScreen() {
-  const { session, current } = useSession();
+  const { session, current, isOrganizer } = useSession();
   const circleId = current?.circle.id;
   const organizerId = current?.circle.organizer_id;
 
@@ -97,7 +97,7 @@ export default function CheckinScreen() {
     .filter((c) => !lastDone || Date.parse(c.scheduled_for) > Date.parse(lastDone.scheduled_for))
     .at(-1);
   const next = checkins.find((c) => c.status === "pending" && Date.parse(c.scheduled_for) > now);
-  const who = organizerName ?? "Your family";
+  const who = isOrganizer ? "Your family" : (organizerName ?? "Your family");
 
   async function respond(mode: CheckinMode, photoPath: string | null = null) {
     if (!open) return;
@@ -234,9 +234,18 @@ export default function CheckinScreen() {
         <>
           <Gap />
           <T variant="title">Nothing to do right now</T>
-          <T tone="muted">{nextLine ?? `${who} hasn't set up check-in times yet.`}</T>
+          <T tone="muted">{nextLine ?? (isOrganizer ? "Choose your check-in times in Check-in settings." : `${who} hasn't set up check-in times yet.`)}</T>
         </>
       )}
+
+      {isOrganizer ? (
+        <>
+          <Gap size="lg" />
+          <Button label="Check-in settings" variant="secondary" onPress={() => router.push("/plan")} />
+          <Button label="Invite someone" variant="secondary" onPress={() => router.push("/invite")} />
+          <Button label="People" variant="secondary" onPress={() => router.push("/members")} />
+        </>
+      ) : null}
 
       <Gap size="lg" />
       <T tone="muted" center>
