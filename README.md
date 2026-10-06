@@ -6,7 +6,7 @@ A gentle daily check-in between an aging parent and their family. At times the o
 
 ## Status
 
-Pilot build: Expo SDK 57, TypeScript, and Expo Router, with a single placeholder screen. The database schema, access rules, and scheduler are in place and tested. The app screens are not built yet.
+Pilot build: Expo SDK 57, TypeScript, and Expo Router. The database schema, access rules, and scheduler are in place and tested, and the app's first full set of screens is built. The screens typecheck and bundle for iOS and Android but have not yet been tried on a phone.
 
 The full concept test plan lives in a private doc: [Daily Check-In: Concept Test Plan](https://claude.ai/code/artifact/e9e11eff-a810-4d72-86e7-1294340414ac).
 
@@ -122,9 +122,44 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
 
 ### Still to build
 
-- The app screens: role choice, joining, the parent's check-in screen, the organizer's setup, and the family feed.
-- Registering each device's push token when someone signs in.
 - Checking Expo's delivery receipts and removing tokens for uninstalled apps.
+- The "Something's not right" button, after its wording is tested.
+
+## The app
+
+| Screen | Who | What it does |
+| --- | --- | --- |
+| Welcome | Everyone | Set up check-ins, or join with a code |
+| Sign in | Organizer | Email address, then the six-digit code from the email |
+| Set up a circle | Organizer | Who the check-ins are for, your name, and whether you're their child or caregiver |
+| Check-in settings | Organizer | Mode, photo prompt, up to three times, time zone, reminders, wait, quick replies, a personal note |
+| Invite someone | Organizer | Makes a join code and shares it |
+| Join with a code | Anyone | Name and code; signs in anonymously if needed |
+| Almost there | New members | Waits for approval and updates on its own |
+| Check-in | Parent | One big button, photo, or selfie; quick replies; Later; "In an emergency, call 911" |
+| Home | Organizer and family | Recent check-ins with photos and replies, what's next, people waiting to join |
+| People | Everyone | The circle's members; the organizer approves and removes, others can leave |
+
+Design: Atkinson Hyperlegible (made for readers with low vision), large type, 56-point touch targets, calm blue for actions, green for checked in, and amber rather than red for a missed check-in. Light mode only for the pilot.
+
+### Supabase email setup
+
+Organizers sign in with a code sent by email. Supabase's default emails send a link instead, so in the dashboard under **Authentication → Emails**, edit the **Magic Link** and **Confirm signup** templates to include the code, for example `Your Daily Check-In code is {{ .Token }}`.
+
+Supabase's built-in email sender only allows a few emails an hour. Set up your own email provider (SMTP) under the same settings before the pilot.
+
+### Trying it on a phone
+
+1. Clone the repo, run `npm install`, and copy `.env.example` to `.env.local` with the Supabase URL and publishable key.
+2. Run `npx expo start` and open it in the Expo Go app. Everything works there except push notifications.
+3. For push notifications, the app needs its own build:
+
+   ```bash
+   npx eas-cli@latest init                                   # links an Expo project; sets the push project ID
+   npx eas-cli@latest build --profile development --platform ios
+   ```
+
+   An iPhone build needs an Apple Developer account. Pick the app's bundle identifier carefully the first time; it can't change after release.
 
 ## Open decisions
 

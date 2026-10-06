@@ -1,29 +1,43 @@
-import { StyleSheet, Text, View } from "react-native";
+// Sends each person to the right place: welcome, setup, waiting for approval,
+// the parent's check-in screen, or the family's home.
+
+import { Redirect, router } from "expo-router";
+import { StyleSheet, View } from "react-native";
+
+import { Button, Gap, Screen, T } from "@/components/ui";
+import { useSession } from "@/lib/session";
+import { space } from "@/lib/theme";
 
 export default function Index() {
+  const { session, current } = useSession();
+
+  if (!session) return <Welcome />;
+  if (!current) return <Redirect href={session.user.is_anonymous ? "/join" : "/setup"} />;
+  if (current.status === "pending") return <Redirect href="/waiting" />;
+  if (current.role === "parent") return <Redirect href="/checkin" />;
+  return <Redirect href="/home" />;
+}
+
+function Welcome() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Daily Check-In</Text>
-      <Text style={styles.subtitle}>Pilot build. Role selection comes next.</Text>
-    </View>
+    <Screen scroll={false} topInset>
+      <View style={styles.top}>
+        <T variant="display">Daily Check-In</T>
+        <Gap size="sm" />
+        <T tone="muted">
+          A small hello each day between a parent and the people who look after them. If a check-in doesn&apos;t come, the
+          family hears about it.
+        </T>
+      </View>
+      <View style={styles.actions}>
+        <Button label="Set up check-ins for someone" onPress={() => router.push("/sign-in")} />
+        <Button label="I have a join code" variant="secondary" onPress={() => router.push("/join")} />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.7,
-    textAlign: "center",
-  },
+  top: { flex: 1, justifyContent: "center" },
+  actions: { gap: space.md },
 });
