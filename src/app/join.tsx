@@ -29,13 +29,17 @@ export default function Join() {
       }
     }
 
-    const { error: rpcError } = await supabase.rpc("redeem_invite", {
+    const { data: circleId, error: rpcError } = await supabase.rpc("redeem_invite", {
       p_code: code.trim(),
       p_display_name: name.trim(),
     });
     if (rpcError) {
       setBusy(false);
       return setError(errorMessage(rpcError));
+    }
+    if (!circleId) {
+      setBusy(false);
+      return setError("That code isn't valid. It may have been used or expired. Ask for a new one.");
     }
     await refresh();
     setBusy(false);

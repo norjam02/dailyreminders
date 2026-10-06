@@ -88,7 +88,12 @@ export default function CheckinScreen() {
   const zone = plan?.timezone ?? "America/Chicago";
   const lastDone = [...checkins].reverse().find((c) => c.status === "done");
   const open = checkins
-    .filter((c) => (c.status === "pending" && Date.parse(c.scheduled_for) <= now) || c.status === "missed")
+    .filter(
+      (c) =>
+        (c.status === "pending" && Date.parse(c.scheduled_for) <= now) ||
+        // A missed check-in can still be answered late, for six hours.
+        (c.status === "missed" && now - Date.parse(c.scheduled_for) < 6 * HOUR),
+    )
     .filter((c) => !lastDone || Date.parse(c.scheduled_for) > Date.parse(lastDone.scheduled_for))
     .at(-1);
   const next = checkins.find((c) => c.status === "pending" && Date.parse(c.scheduled_for) > now);
@@ -207,7 +212,7 @@ export default function CheckinScreen() {
           ) : null}
 
           {open.status === "pending" && !open.snoozed_until ? (
-            <Button label="Later" variant="secondary" onPress={later} busy={busy === "later"} disabled={!!busy} />
+            <Button label="Remind me in 30 minutes" variant="secondary" onPress={later} busy={busy === "later"} disabled={!!busy} />
           ) : open.snoozed_until && Date.parse(open.snoozed_until) > now ? (
             <T tone="muted" center>
               Reminders are paused until {clockTime(open.snoozed_until, zone)}.
@@ -234,7 +239,7 @@ export default function CheckinScreen() {
       )}
 
       <Gap size="lg" />
-      <T variant="small" tone="muted" center>
+      <T tone="muted" center>
         This isn&apos;t an emergency service. In an emergency, call 911.
       </T>
     </Screen>

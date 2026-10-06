@@ -1,7 +1,8 @@
 // Shared building blocks. Big touch targets (56 pt minimum) and large text.
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Pressable,
   RefreshControl,
@@ -37,6 +38,7 @@ export function Screen({
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
           refreshControl={
             onRefresh ? (
               <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -139,6 +141,7 @@ export function Field({ label, hint, ...input }: { label: string; hint?: string 
       <TextInput
         {...input}
         accessibilityLabel={label}
+        accessibilityHint={hint}
         placeholderTextColor={colors.muted}
         style={styles.input}
       />
@@ -232,12 +235,18 @@ export function Card({ children, tone = "plain" }: { children: ReactNode; tone?:
   );
 }
 
+// Errors are announced to screen readers as soon as they appear.
 export function ErrorText({ message }: { message: string | null }) {
+  useEffect(() => {
+    if (message) AccessibilityInfo.announceForAccessibility(message);
+  }, [message]);
   if (!message) return null;
   return (
-    <T tone="error" style={styles.error}>
-      {message}
-    </T>
+    <View accessibilityLiveRegion="polite">
+      <T tone="error" style={styles.error}>
+        {message}
+      </T>
+    </View>
   );
 }
 
@@ -268,7 +277,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: colors.line,
+    borderColor: colors.border,
     borderRadius: radius.control,
     paddingHorizontal: space.md,
     minHeight: 56,
@@ -283,7 +292,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.control,
     borderWidth: 2,
-    borderColor: colors.line,
+    borderColor: colors.border,
   },
   choiceSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   choiceText: { flex: 1, gap: 2 },

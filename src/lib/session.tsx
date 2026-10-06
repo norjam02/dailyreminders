@@ -52,9 +52,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // Supabase advises against calling it from inside this callback, which can
+    // deadlock; defer the membership load to the next tick.
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      loadMemberships(next).catch(() => setMemberships([]));
+      setTimeout(() => {
+        loadMemberships(next).catch(() => setMemberships([]));
+      }, 0);
     });
 
     return () => {
@@ -92,8 +96,10 @@ export function useSession(): SessionState {
 
 // Supabase errors from our database functions carry the friendly message we wrote.
 export function errorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
-    return error.message;
+  const message =
+    error && typeof error === "object" && "message" in error && typeof error.message === "string" ? error.message : "";
+  if (!message || /network request failed|failed to fetch|fetch failed|network error|timed? ?out/i.test(message)) {
+    return "Couldn't reach Daily Check-In. Check your internet connection and try again.";
   }
-  return "Something went wrong. Check your connection and try again.";
+  return message;
 }

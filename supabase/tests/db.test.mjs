@@ -19,6 +19,7 @@ const users = {
   secondParent: "00000000-0000-4000-8000-000000000005",
   organizingCaregiver: "00000000-0000-4000-8000-000000000006",
   secondChild: "00000000-0000-4000-8000-000000000007",
+  guesser: "00000000-0000-4000-8000-000000000008",
 };
 
 let db;
@@ -102,19 +103,33 @@ describe("circles and joining", () => {
   });
 
   test("a code works only once", async () => {
-    await assert.rejects(
-      as(users.stranger, "select public.redeem_invite($1, 'Stranger')", [parentCode]),
-      /That code is not valid/,
-    );
+    const joined = await value(users.stranger, "select public.redeem_invite($1, 'Stranger')", [parentCode]);
+    assert.equal(joined, null);
   });
 
   test("an expired code is refused", async () => {
     const code = await value(users.child, "select public.create_invite($1, 'family')", [circle]);
     await db.query("update public.invites set expires_at = now() - interval '1 minute' where code = $1", [code]);
+    const joined = await value(users.stranger, "select public.redeem_invite($1, 'Stranger')", [code]);
+    assert.equal(joined, null);
+  });
+
+  test("guessing codes is limited to 10 wrong tries an hour", async () => {
+    for (let i = 0; i < 10; i++) {
+      const joined = await value(users.guesser, "select public.redeem_invite($1, 'Guesser')", [`ZZZZ${i}A`]);
+      assert.equal(joined, null);
+    }
+    const real = await value(users.child, "select public.create_invite($1, 'family')", [circle]);
     await assert.rejects(
-      as(users.stranger, "select public.redeem_invite($1, 'Stranger')", [code]),
-      /That code is not valid/,
+      as(users.guesser, "select public.redeem_invite($1, 'Guesser')", [real]),
+      /Too many codes tried/,
     );
+    const attempts = await db.query("select count(*)::int as n from public.invite_attempts where user_id = $1", [users.guesser]);
+    assert.equal(attempts.rows[0].n, 10);
+  });
+
+  test("the app cannot read the guess log", async () => {
+    await assert.rejects(as(users.child, "select * from public.invite_attempts"), /permission denied/);
   });
 
   test("a circle cannot get a second parent", async () => {

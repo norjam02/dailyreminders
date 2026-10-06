@@ -118,6 +118,8 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
    npx supabase db push
    ```
 
+   Or run each file in `supabase/migrations/` in order in the dashboard's SQL Editor.
+
 4. Copy `.env.example` to `.env.local` and fill in the project URL and publishable key. `.env.local` is ignored by git.
 
 ### Still to build
@@ -178,4 +180,4 @@ The database tests need no Docker and no Supabase project. They run the migratio
 
 Remote push notifications need a development build (`npx eas-cli@latest build --profile development`), not Expo Go.
 
-`AGENTS.md` holds working notes for coding agents, including Expo-specific rules.
+`AGENTS.md` holds working notes for coding agents, including Expo-specific rules. `.claude/agents/` holds five reviewer agents (code, security, accessibility, mobile, and pilot readiness), and `docs/` holds their reviews.
