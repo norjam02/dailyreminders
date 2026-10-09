@@ -187,7 +187,7 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
 | Sign in | Organizer | Email address, then the six-digit code from the email |
 | Set up a circle | Organizer | Who the check-ins are for (yourself, or someone you care for) and your name |
 | Check-in settings | Organizer | Mode, photo prompt, up to three times, time zone, reminders, wait, quick replies, a personal note |
-| Invite someone | Organizer | Makes a join code and shares it |
+| Invite someone | Organizer | From My Circle. Makes a join code and shares a message with a link to get the app (`EXPO_PUBLIC_DOWNLOAD_URL`) and the code |
 | Join with a code | Anyone | Name and code; signs in anonymously if needed |
 | Almost there | New members | Waits for approval and updates on its own |
 | Check-in | Parent | One big button, photo, or selfie; quick replies; Later; "In an emergency, call 911". A parent who organizes also gets settings, invites, and My Circle here. |

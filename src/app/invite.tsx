@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { Share, StyleSheet, Text } from "react-native";
 
 import { Button, Card, Choice, ErrorText, Screen, Section, T } from "@/components/ui";
+import { DOWNLOAD_URL } from "@/lib/links";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { colors, fonts } from "@/lib/theme";
@@ -101,13 +102,25 @@ export default function Invite() {
   }
 
   const message = code
-    ? `Join ${parentName}'s DailyPulse circle. Install the app, tap "I have a join code", and enter ${code}. The code works once and expires in a day.`
+    ? [
+        `You're invited to join ${parentName}'s DailyPulse circle.`,
+        "",
+        DOWNLOAD_URL
+          ? `1. Get the free DailyPulse app: ${DOWNLOAD_URL}`
+          : "1. Get the free DailyPulse app from the App Store or Google Play.",
+        `2. Open it, tap "I have a join code", and enter ${code}`,
+        "",
+        "The code works once and expires in a day.",
+      ].join("\n")
     : "";
 
   if (code) {
     return (
       <Screen>
-        <T tone="muted">Send this code to the person joining. It works once and expires in a day.</T>
+        <T tone="muted">
+          Share this with the person joining. The message includes a link to get the app and this code. The code works
+          once and expires in a day.
+        </T>
         <Card>
           <Text style={styles.code} accessibilityLabel={`Code ${code.split("").join(" ")}`}>
             {code}

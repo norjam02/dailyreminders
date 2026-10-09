@@ -243,7 +243,6 @@ export default function CheckinScreen() {
         <>
           <Gap size="lg" />
           <Button label="Check-in settings" variant="secondary" onPress={() => router.push("/plan")} />
-          <Button label="Invite someone" variant="secondary" onPress={() => router.push("/invite")} />
           <Button label="My Circle" variant="secondary" onPress={() => router.push("/members")} />
           <Button label="Sign out" variant="quiet" onPress={signOut} />
         </>

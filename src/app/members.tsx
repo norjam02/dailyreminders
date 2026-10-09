@@ -84,6 +84,7 @@ export default function Members() {
 
   return (
     <Screen>
+      {isOrganizer ? <Button label="Invite someone" onPress={() => router.push("/invite")} /> : null}
       <ErrorText message={error} />
 
       {isOrganizer && waiting.length > 0 ? (
@@ -134,7 +135,6 @@ export default function Members() {
         })}
       </View>
 
-      {isOrganizer ? <Button label="Invite someone" onPress={() => router.push("/invite")} /> : null}
     </Screen>
   );
 }
