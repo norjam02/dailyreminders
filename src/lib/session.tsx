@@ -1,6 +1,7 @@
 // Who is signed in, and which circles they belong to.
 
 import type { Session } from "@supabase/supabase-js";
+import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { supabase } from "./supabase";
@@ -77,6 +78,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setSession(null);
     setMemberships([]);
+    // Back to the welcome screen, clearing the screens behind it.
+    if (router.canDismiss()) router.dismissAll();
+    router.replace("/");
   }, []);
 
   const value = useMemo<SessionState>(() => {
