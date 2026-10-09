@@ -96,7 +96,36 @@ The rule lives in the database (`circle_access` and `circle_is_active`), so the 
   ```
 
 - **Turning a circle on by hand:** `insert into public.circle_access (circle_id, source) values ('<circle id>', 'manual');`
-- **Store purchases** aren't connected yet. `src/lib/billing.ts` is where the App Store, Google Play (through RevenueCat), or Stripe checkout plugs in; the store's webhook will write `circle_access`.
+- **Store purchases** go through the App Store and Google Play, managed by [RevenueCat](https://www.revenuecat.com). The organizer subscribes with their Apple or Google account; one subscription turns on every circle they set up.
+
+#### How a purchase turns a circle on
+
+1. The Subscribe screen (`src/app/subscribe.tsx`, `src/lib/billing.ts`) buys the yearly or monthly product through RevenueCat, using the organizer's Supabase user id as the RevenueCat app user id.
+2. Right after, the app calls the `sync-subscription` function, which asks RevenueCat for the organizer's current subscription and calls `apply_store_access`. The circle turns on at once.
+3. RevenueCat also calls `revenuecat-webhook` on every renewal, cancellation, refund, billing problem, or expiry, which runs the same check. When a subscription ends, the circle turns off.
+
+A store result never cuts short a pilot code that's still running.
+
+#### Setting it up (one time)
+
+1. **Developer accounts:** Apple Developer Program ($99 a year) and Google Play Console ($25 once), both in the business's name. Accept the paid apps agreements and add tax and bank details in each.
+2. **App records:** create DailyPulse in App Store Connect and Play Console, with the bundle id / package name we choose.
+3. **Products,** in both stores, in one subscription group: `dailypulse_monthly` at $4.99 a month and `dailypulse_yearly` at $49 a year.
+4. **RevenueCat:** create a project with an Apple app and a Google app (connect each store's credentials), add entitlement `circle` with both products, and make the current offering with the Monthly and Annual packages.
+5. **Keys:**
+   - In `.env.local`: `EXPO_PUBLIC_REVENUECAT_APPLE_KEY` and `EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY` (RevenueCat's public SDK keys).
+   - In Supabase, Edge Functions secrets: `REVENUECAT_SECRET_KEY` (a RevenueCat secret API key) and `REVENUECAT_WEBHOOK_AUTH` (any long random string).
+6. **Deploy the functions:**
+
+   ```bash
+   npx supabase functions deploy revenuecat-webhook --no-verify-jwt
+   npx supabase functions deploy sync-subscription --no-verify-jwt
+   ```
+
+7. **Webhook:** in RevenueCat, add a webhook to `https://<project-ref>.supabase.co/functions/v1/revenuecat-webhook` with the authorization header `Bearer <REVENUECAT_WEBHOOK_AUTH>`.
+8. **Terms and privacy:** Apple requires links to Terms of Use and a Privacy Policy on the subscribe screen and in the store listing. These need web pages.
+
+Real purchases only work in a development or store build. In Expo Go, RevenueCat runs in a preview mode with no real purchases; pilot codes still work there.
 
 ### The scheduler
 
@@ -156,7 +185,7 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
 | Almost there | New members | Waits for approval and updates on its own |
 | Check-in | Parent | One big button, photo, or selfie; quick replies; Later; "In an emergency, call 911". A parent who organizes also gets settings, invites, and My Circle here. |
 | Home | Organizer and family | Recent check-ins with photos and replies, what's next, people waiting to join |
-| Subscribe | Organizer | Yearly or monthly plan, or a pilot code; shown after check-in settings until the circle is on |
+| Subscribe | Organizer | Yearly or monthly plan through the App Store or Google Play, restore a purchase, or a pilot code; shown after check-in settings until the circle is on |
 | My Circle | Everyone | The circle's members; the organizer approves and removes, others can leave |
 
 Design: Atkinson Hyperlegible (made for readers with low vision), large type, 56-point touch targets, calm blue for actions, green for checked in, and amber rather than red for a missed check-in. Light mode only for the pilot.

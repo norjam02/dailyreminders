@@ -2,25 +2,40 @@
 // alerts need a subscription (or a pilot code during the pilot).
 
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { Button, Card, Choice, ErrorText, Field, Gap, Screen, Section, T } from "@/components/ui";
-import { PLANS, startPurchase, type PlanId } from "@/lib/billing";
+import {
+  DEFAULT_PLANS,
+  loadPlans,
+  openManageSubscription,
+  restorePurchases,
+  startPurchase,
+  STORE_NAME,
+  type PlanId,
+  type PurchaseResult,
+} from "@/lib/billing";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { space } from "@/lib/theme";
 
 export default function Subscribe() {
-  const { current, isOrganizer, isActive, refresh } = useSession();
+  const { session, current, isOrganizer, isActive, refresh } = useSession();
+  const userId = session?.user.id;
   const circleId = current?.circle.id;
   const forMyself = current?.role === "parent";
   const name = current?.circle.name ?? "them";
 
   const [plan, setPlan] = useState<PlanId>("yearly");
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState<"buy" | "code" | null>(null);
+  const [plans, setPlans] = useState(DEFAULT_PLANS);
+  const [busy, setBusy] = useState<"buy" | "code" | "restore" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (userId) loadPlans(userId).then(setPlans);
+  }, [userId]);
 
   if (!isOrganizer || !circleId) {
     return (
@@ -38,6 +53,9 @@ export default function Subscribe() {
           <T>Invite the people you want in it.</T>
         </Card>
         <Button label="Invite someone" onPress={() => router.replace("/invite")} />
+        {userId ? (
+          <Button label="Manage subscription" variant="secondary" onPress={() => openManageSubscription(userId)} />
+        ) : null}
         <Button label="Done" variant="quiet" onPress={() => router.replace("/")} />
       </Screen>
     );
@@ -48,14 +66,28 @@ export default function Subscribe() {
     router.replace("/invite");
   }
 
+  async function handle(result: PurchaseResult) {
+    if (result.ok) return done();
+    if (!result.cancelled) setError(result.message);
+    await refresh();
+  }
+
   async function buy() {
-    if (!circleId) return;
+    if (!userId) return;
     setBusy("buy");
     setError(null);
-    const result = await startPurchase(plan, circleId);
+    const result = await startPurchase(plan, userId);
     setBusy(null);
-    if (!result.ok) return setError(result.message);
-    await done();
+    await handle(result);
+  }
+
+  async function restore() {
+    if (!userId) return;
+    setBusy("restore");
+    setError(null);
+    const result = await restorePurchases(userId);
+    setBusy(null);
+    await handle(result);
   }
 
   async function applyCode() {
@@ -94,7 +126,7 @@ export default function Subscribe() {
       </View>
 
       <Section title="Choose a plan" hint="One subscription covers your whole circle.">
-        {PLANS.map((p) => (
+        {plans.map((p) => (
           <Choice
             key={p.id}
             label={`${p.label}: ${p.price}`}
@@ -108,8 +140,10 @@ export default function Subscribe() {
       <ErrorText message={error} />
       <Button label="Subscribe" onPress={buy} busy={busy === "buy"} disabled={!!busy} />
       <T tone="muted" variant="small">
-        Renews automatically until you cancel. Cancel anytime.
+        Paid through your {STORE_NAME} account. Renews automatically at the same price until you cancel, at least 24
+        hours before the end of the period. Cancel anytime in your {STORE_NAME} settings.
       </T>
+      <Button label="Restore a purchase" variant="quiet" onPress={restore} busy={busy === "restore"} disabled={!!busy} />
 
       <Gap />
       <Section title="Have a pilot code?">

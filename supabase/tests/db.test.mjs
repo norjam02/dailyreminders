@@ -24,6 +24,7 @@ const users = {
   niece: "00000000-0000-4000-8000-000000000010",
   payer: "00000000-0000-4000-8000-000000000011",
   joiner: "00000000-0000-4000-8000-000000000012",
+  storeBuyer: "00000000-0000-4000-8000-000000000013",
 };
 
 let db;
@@ -459,6 +460,49 @@ describe("circles and joining", () => {
     test("members can see whether their circle is paid", async () => {
       assert.equal(await count(users.payer, "select circle_id from public.circle_access where circle_id = $1", [lapsed]), 1);
       assert.equal(await count(users.stranger, "select circle_id from public.circle_access"), 0);
+    });
+  });
+
+  describe("store subscriptions", () => {
+    let storeCircle;
+    const later = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    const past = new Date(Date.now() - 60_000).toISOString();
+    const apply = (active, source, plan, until) =>
+      db.query("select public.apply_store_access($1, $2, $3, $4, $5)", [users.storeBuyer, active, source, plan, until]);
+    const access = async () =>
+      (await db.query("select source, plan, active_until > now() as on from public.circle_access where circle_id = $1", [storeCircle])).rows[0];
+
+    before(async () => {
+      storeCircle = await value(users.storeBuyer, "select public.create_circle('Pat', 'Robin', 'family')");
+    });
+
+    test("the app can't apply a store result itself", async () => {
+      await assert.rejects(
+        as(users.storeBuyer, "select public.apply_store_access($1, true, 'apple', 'yearly', now() + interval '1 year')", [users.storeBuyer]),
+        /permission denied/,
+      );
+    });
+
+    test("a purchase turns on the organizer's circle", async () => {
+      await apply(true, "apple", "yearly", later);
+      assert.deepEqual(await access(), { source: "apple", plan: "yearly", on: true });
+      assert.equal(await value(users.storeBuyer, "select public.circle_is_active($1)", [storeCircle]), true);
+    });
+
+    test("when the subscription ends, the circle turns off", async () => {
+      await apply(false, null, null, null);
+      assert.equal((await access()).on, false);
+    });
+
+    test("a store result doesn't cut short a longer pilot code", async () => {
+      await db.query("update public.circle_access set source = 'pilot_code', plan = null, active_until = now() + interval '60 days' where circle_id = $1", [storeCircle]);
+      await apply(true, "google", "monthly", later);
+      assert.equal((await access()).source, "pilot_code");
+      await apply(false, null, null, null);
+      assert.equal((await access()).on, true);
+      await db.query("update public.circle_access set active_until = $2 where circle_id = $1", [storeCircle, past]);
+      await apply(true, "google", "monthly", later);
+      assert.deepEqual(await access(), { source: "google", plan: "monthly", on: true });
     });
   });
 
