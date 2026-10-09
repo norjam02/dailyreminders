@@ -233,6 +233,14 @@ describe("circles and joining", () => {
       assert.equal(await value(users.child, "select mode from public.checkin_plans"), "button");
     });
 
+    test("a quick reply can't be longer than 50 characters", async () => {
+      await assert.rejects(
+        as(users.child, "update public.checkin_plans set quick_replies = array[repeat('x', 51)] where circle_id = $1", [circle]),
+        /quick_replies_length/,
+      );
+      await as(users.child, "update public.checkin_plans set quick_replies = array['See you Sunday!', 'Love you!'] where circle_id = $1", [circle]);
+    });
+
     test("bad settings are refused", async () => {
       await assert.rejects(
         as(users.child, "update public.checkin_plans set timezone = 'Mars/Olympus' where circle_id = $1", [circle]),

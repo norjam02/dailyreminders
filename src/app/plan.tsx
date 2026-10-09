@@ -8,7 +8,11 @@ import { Button, Chip, Chips, Choice, ErrorText, Field, Screen, Section, T } fro
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { deviceTimeZone, HOUR_CHOICES, hourLabel, US_TIME_ZONES } from "@/lib/time";
-import { STARTER_REPLIES, type CheckinMode, type CheckinPlan, type ReminderFirmness } from "@/lib/types";
+import {
+  MAX_REPLIES,
+  REPLY_LENGTH,
+  STARTER_REPLIES,
+  type CheckinMode, type CheckinPlan, type ReminderFirmness } from "@/lib/types";
 
 // "a selfie" opens the front camera on the check-in screen.
 const PHOTO_PROMPTS = ["breakfast", "a selfie", "the view from your window", "your coffee cup", "anything you like"];
@@ -55,6 +59,7 @@ export default function Plan() {
   const [exists, setExists] = useState(false);
   // Each check-in can carry quick replies or a note from the organizer, not both.
   const [extra, setExtra] = useState<"none" | "replies" | "note">("none");
+  const [ownReply, setOwnReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,6 +113,16 @@ export default function Plan() {
     update({
       quick_replies: has ? plan.quick_replies.filter((r) => r !== reply) : [...plan.quick_replies, reply],
     });
+  }
+
+  function addOwnReply() {
+    if (!plan) return;
+    const reply = ownReply.trim().replace(/\s+/g, " ");
+    if (!reply) return;
+    if (!plan.quick_replies.some((r) => r.toLowerCase() === reply.toLowerCase())) {
+      update({ quick_replies: [...plan.quick_replies, reply] });
+    }
+    setOwnReply("");
   }
 
   async function save() {
@@ -245,12 +260,34 @@ export default function Plan() {
       </Section>
 
       {extra === "replies" ? (
-        <Section title="Quick replies" hint="Pick up to four.">
+        <Section title="Quick replies" hint={`Pick up to ${MAX_REPLIES}, or write your own.`}>
           <Chips>
-            {STARTER_REPLIES.map((r) => (
-              <Chip key={r} label={r} selected={plan.quick_replies.includes(r)} onPress={() => toggleReply(r)} />
+            {[...STARTER_REPLIES, ...plan.quick_replies.filter((r) => !STARTER_REPLIES.includes(r))].map((r) => (
+              <Chip
+                key={r}
+                label={r}
+                selected={plan.quick_replies.includes(r)}
+                disabled={!plan.quick_replies.includes(r) && plan.quick_replies.length >= MAX_REPLIES}
+                onPress={() => toggleReply(r)}
+              />
             ))}
           </Chips>
+          <Field
+            label="Write your own"
+            hint={`Up to ${REPLY_LENGTH} characters.`}
+            placeholder="See you Sunday!"
+            value={ownReply}
+            onChangeText={setOwnReply}
+            maxLength={REPLY_LENGTH}
+            returnKeyType="done"
+            onSubmitEditing={addOwnReply}
+          />
+          <Button
+            label="Add this reply"
+            variant="secondary"
+            onPress={addOwnReply}
+            disabled={!ownReply.trim() || plan.quick_replies.length >= MAX_REPLIES}
+          />
         </Section>
       ) : null}
 

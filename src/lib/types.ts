@@ -59,4 +59,14 @@ export type Checkin = {
 };
 
 
-export const STARTER_REPLIES = ["Love you!", "I'm on it", "Thanks for checking", "Doing fine"];
+export const STARTER_REPLIES = [
+  "Love you!",
+  "I'm on it",
+  "Thanks for checking",
+  "Doing fine",
+  "Another day",
+  "Grateful for you",
+];
+
+export const MAX_REPLIES = 4;
+export const REPLY_LENGTH = 50;
