@@ -53,13 +53,11 @@ export default function Invite() {
     ...(hasParent
       ? []
       : [{ role: "parent" as const, label: parentName, description: "The person who checks in each day." }]),
-    { role: "child", label: isParent ? "Your child" : "Their child", description: `Hears about check-ins and missed ones.` },
     {
-      role: "caregiver",
-      label: "A caregiver",
-      description: isParent ? "Someone who helps look after you." : "Someone who helps look after them.",
+      role: "family",
+      label: isParent ? "Someone who looks out for you" : `Someone who looks out for ${parentName}`,
+      description: "A caregiver, friend, or family member. They see check-ins and hear if one is missed.",
     },
-    { role: "family", label: "Other family or a friend", description: "Hears when a check-in is missed." },
   ];
 
   async function makeCode() {

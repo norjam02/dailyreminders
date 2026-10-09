@@ -9,7 +9,7 @@ import { Button, Card, ErrorText, Screen, T } from "@/components/ui";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { space } from "@/lib/theme";
-import { roleLabel, type Member } from "@/lib/types";
+import type { Member } from "@/lib/types";
 
 export default function Members() {
   const { session, current, isOrganizer, refresh } = useSession();
@@ -92,7 +92,7 @@ export default function Members() {
           {waiting.map((m) => (
             <Card key={m.user_id} tone="attention">
               <T variant="heading">{m.profile?.display_name ?? "Someone"}</T>
-              <T tone="muted">Joined as {roleLabel[m.role].toLowerCase()}</T>
+              <T tone="muted">{m.role === "parent" ? "Will check in each day" : "Will see check-ins and hear about missed ones"}</T>
               <Button label="Approve" onPress={() => approve(m)} busy={busyId === m.user_id} />
               <Button label="Decline" variant="quiet" onPress={() => remove(m)} disabled={busyId === m.user_id} />
             </Card>
@@ -113,7 +113,7 @@ export default function Members() {
                 {isMe ? " (you)" : ""}
               </T>
               <T tone="muted">
-                {roleLabel[m.role]}
+                {m.role === "parent" ? "Checks in each day" : "Looks out for them"}
                 {isOrg ? ", set up this circle" : ""}
               </T>
               {canRemove ? (

@@ -133,7 +133,7 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
 | --- | --- | --- |
 | Welcome | Everyone | Set up check-ins, or join with a code |
 | Sign in | Organizer | Email address, then the six-digit code from the email |
-| Set up a circle | Organizer | Who the check-ins are for (yourself, your parent, someone you care for, or another family member) and your name |
+| Set up a circle | Organizer | Who the check-ins are for (yourself, or someone you care for) and your name |
 | Check-in settings | Organizer | Mode, photo prompt, up to three times, time zone, reminders, wait, quick replies, a personal note |
 | Invite someone | Organizer | Makes a join code and shares it |
 | Join with a code | Anyone | Name and code; signs in anonymously if needed |

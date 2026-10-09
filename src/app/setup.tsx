@@ -1,5 +1,5 @@
-// The organizer creates the circle. Anyone can: the parent themselves, their
-// child, a caregiver, or other family. The organizer is the subscriber.
+// The organizer creates the circle, either for themselves or for someone they
+// care for. The organizer is the subscriber.
 
 import { router } from "expo-router";
 import { useState } from "react";
@@ -9,15 +9,12 @@ import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import type { MemberRole } from "@/lib/types";
 
-const ROLES: { role: MemberRole; label: string; description?: string }[] = [
-  { role: "parent", label: "Myself", description: "You'll get the daily check-ins, and your family hears if one is missed." },
-  { role: "child", label: "My parent" },
-  {
-    role: "caregiver",
-    label: "Someone I care for",
-    description: "As a paid caregiver, a friend, or anyone looking after someone who isn't their own parent.",
-  },
-  { role: "family", label: "Another family member", description: "A grandparent, aunt, uncle, or anyone else in the family." },
+// Only two choices matter: checking in yourself, or looking out for someone
+// else. Every non-parent role works the same, so "Someone I care for" is
+// stored as family.
+const ROLES: { role: MemberRole; label: string; description: string }[] = [
+  { role: "parent", label: "Myself", description: "You check in each day, and the people you invite hear if you miss one." },
+  { role: "family", label: "Someone I care for", description: "As their caregiver, friend, or family member." },
 ];
 
 export default function Setup() {
@@ -74,7 +71,7 @@ export default function Setup() {
       {role && !forMyself ? (
         <Field
           label="Their name"
-          hint="What the family calls them, like Mom or Grandpa Joe."
+          hint="What you call them, like Mom or Grandpa Joe."
           value={parentName}
           onChangeText={setParentName}
           autoCapitalize="words"

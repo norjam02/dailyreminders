@@ -53,11 +53,5 @@ export type Checkin = {
   photo_path: string | null;
 };
 
-export const roleLabel: Record<MemberRole, string> = {
-  child: "Child",
-  parent: "Parent",
-  caregiver: "Caregiver",
-  family: "Family",
-};
 
 export const STARTER_REPLIES = ["Love you!", "I'm on it", "Thanks for checking", "Doing fine"];
