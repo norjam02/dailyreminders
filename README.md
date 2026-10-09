@@ -82,6 +82,22 @@ Access rules live in the database, so the app cannot get around them.
 
 The schema is in `supabase/migrations/`. The functions the app calls are `create_circle`, `create_invite`, `redeem_invite`, `approve_member`, `remove_member`, `respond_checkin`, and `snooze_checkin`.
 
+### Subscriptions
+
+DailyPulse is free to download, sign up for, and set up: anyone can create a circle and choose check-in settings. A circle has to be on (paid, or on a pilot code) before the organizer can invite anyone, anyone can join or be approved, or the scheduler makes and sends check-ins. One subscription, paid by the organizer, covers the whole circle: $4.99 a month or $49 a year.
+
+The rule lives in the database (`circle_access` and `circle_is_active`), so the app can't get around it. Only the server writes `circle_access`.
+
+- **Pilot codes** (`access_codes`) turn a circle on for a set number of days. The organizer enters one on the Subscribe screen. Make one in the SQL Editor:
+
+  ```sql
+  insert into public.access_codes (code, days, uses_left, expires_at, note)
+  values ('PILOT2026', 30, 20, '2026-12-31', 'November pilot');
+  ```
+
+- **Turning a circle on by hand:** `insert into public.circle_access (circle_id, source) values ('<circle id>', 'manual');`
+- **Store purchases** aren't connected yet. `src/lib/billing.ts` is where the App Store, Google Play (through RevenueCat), or Stripe checkout plugs in; the store's webhook will write `circle_access`.
+
 ### The scheduler
 
 A job runs every minute inside the database (pg_cron), with nothing else to deploy. Each run:
@@ -140,6 +156,7 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
 | Almost there | New members | Waits for approval and updates on its own |
 | Check-in | Parent | One big button, photo, or selfie; quick replies; Later; "In an emergency, call 911". A parent who organizes also gets settings, invites, and My Circle here. |
 | Home | Organizer and family | Recent check-ins with photos and replies, what's next, people waiting to join |
+| Subscribe | Organizer | Yearly or monthly plan, or a pilot code; shown after check-in settings until the circle is on |
 | My Circle | Everyone | The circle's members; the organizer approves and removes, others can leave |
 
 Design: Atkinson Hyperlegible (made for readers with low vision), large type, 56-point touch targets, calm blue for actions, green for checked in, and amber rather than red for a missed check-in. Light mode only for the pilot.

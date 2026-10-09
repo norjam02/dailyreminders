@@ -62,6 +62,7 @@ function Navigator() {
         <Stack.Screen name="plan" options={{ title: "Check-in settings" }} />
         <Stack.Screen name="invite" options={{ title: "Invite someone" }} />
         <Stack.Screen name="members" options={{ title: "My Circle" }} />
+        <Stack.Screen name="subscribe" options={{ title: "Subscribe" }} />
       </Stack>
     </>
   );

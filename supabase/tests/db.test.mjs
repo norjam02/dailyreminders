@@ -22,6 +22,8 @@ const users = {
   guesser: "00000000-0000-4000-8000-000000000008",
   selfParent: "00000000-0000-4000-8000-000000000009",
   niece: "00000000-0000-4000-8000-000000000010",
+  payer: "00000000-0000-4000-8000-000000000011",
+  joiner: "00000000-0000-4000-8000-000000000012",
 };
 
 let db;
@@ -42,6 +44,14 @@ async function value(uid, sql, params, options) {
   const result = await as(uid, sql, params, options);
   const row = result.rows[0];
   return row ? Object.values(row)[0] : undefined;
+}
+
+// Marks a circle as paid, the way a store webhook or an admin would.
+async function activate(circleId, until = null) {
+  await db.query(
+    "insert into public.circle_access (circle_id, source, active_until) values ($1, 'manual', $2) on conflict (circle_id) do update set active_until = excluded.active_until",
+    [circleId, until],
+  );
 }
 
 async function count(uid, sql, params, options) {
@@ -81,6 +91,30 @@ describe("circles and joining", () => {
     assert.ok(circle);
     const member = await as(users.child, "select role, status from public.circle_members where circle_id = $1", [circle]);
     assert.deepEqual(member.rows, [{ role: "child", status: "active" }]);
+  });
+
+  test("an unpaid circle can't invite anyone", async () => {
+    await assert.rejects(
+      as(users.child, "select public.create_invite($1, 'parent')", [circle]),
+      /Subscribe to invite people/,
+    );
+  });
+
+  test("the app can't mark a circle as paid", async () => {
+    await assert.rejects(
+      as(users.child, "insert into public.circle_access (circle_id, source) values ($1, 'manual')", [circle]),
+      /permission denied/,
+    );
+    await assert.rejects(as(users.child, "select * from public.access_codes"), /permission denied/);
+  });
+
+  test("a pilot code activates the circle", async () => {
+    await db.query("insert into public.access_codes (code, days, uses_left, expires_at) values ('PILOT2026', 30, 1, now() + interval '30 days')");
+    assert.equal(await value(users.child, "select public.redeem_access_code($1, 'nope')", [circle]), null);
+    const until = await value(users.child, "select public.redeem_access_code($1, ' pilot2026 ')", [circle]);
+    assert.ok(until > new Date(Date.now() + 29 * 86_400_000));
+    assert.equal(await value(users.child, "select public.circle_is_active($1)", [circle]), true);
+    assert.equal(await value(users.child, "select source from public.circle_access where circle_id = $1", [circle]), "pilot_code");
   });
 
   test("only the organizer can make join codes", async () => {
@@ -338,6 +372,7 @@ describe("circles and joining", () => {
 
     test("a caregiver sets up a circle and manages it", async () => {
       caregiverCircle = await value(users.organizingCaregiver, "select public.create_circle('Dad', 'Sam', 'caregiver')");
+      await activate(caregiverCircle);
       const me = await as(users.organizingCaregiver, "select role, status from public.circle_members where circle_id = $1", [caregiverCircle]);
       assert.deepEqual(me.rows, [{ role: "caregiver", status: "active" }]);
 
@@ -375,6 +410,7 @@ describe("circles and joining", () => {
 
     test("a parent sets up their own circle and is its active parent", async () => {
       ownCircle = await value(users.selfParent, "select public.create_circle('Ruth', 'Ruth', 'parent')");
+      await activate(ownCircle);
       const me = await as(users.selfParent, "select role, status from public.circle_members where circle_id = $1", [ownCircle]);
       assert.deepEqual(me.rows, [{ role: "parent", status: "active" }]);
     });
@@ -397,6 +433,32 @@ describe("circles and joining", () => {
     test("other family members can also set up a circle", async () => {
       const familyCircle = await value(users.niece, "select public.create_circle('Aunt Bea', 'Kim', 'family')");
       assert.equal(await value(users.niece, "select role from public.circle_members where circle_id = $1", [familyCircle]), "family");
+    });
+  });
+
+  describe("when a subscription lapses", () => {
+    let lapsed;
+    let code;
+
+    before(async () => {
+      lapsed = await value(users.payer, "select public.create_circle('Gran', 'Lee')");
+      await activate(lapsed);
+      code = await value(users.payer, "select public.create_invite($1, 'family')", [lapsed]);
+      await activate(lapsed, new Date(Date.now() - 60_000).toISOString());
+    });
+
+    test("no one can join", async () => {
+      await assert.rejects(as(users.joiner, "select public.redeem_invite($1, 'Max')", [code]), /isn't active yet/);
+    });
+
+    test("the organizer can still change settings", async () => {
+      await as(users.payer, "insert into public.checkin_plans (circle_id, timezone) values ($1, 'America/Chicago')", [lapsed]);
+      assert.equal(await value(users.payer, "select timezone from public.checkin_plans where circle_id = $1", [lapsed]), "America/Chicago");
+    });
+
+    test("members can see whether their circle is paid", async () => {
+      assert.equal(await count(users.payer, "select circle_id from public.circle_access where circle_id = $1", [lapsed]), 1);
+      assert.equal(await count(users.stranger, "select circle_id from public.circle_access"), 0);
     });
   });
 

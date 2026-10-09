@@ -16,7 +16,7 @@ import type { Checkin, CheckinPlan, Member } from "@/lib/types";
 const DAY = 86_400_000;
 
 export default function Home() {
-  const { current, isOrganizer, signOut } = useSession();
+  const { current, isOrganizer, isActive, signOut } = useSession();
   const circleId = current?.circle.id;
 
   const [plan, setPlan] = useState<CheckinPlan | null>(null);
@@ -87,6 +87,14 @@ export default function Home() {
       }}
     >
       <T variant="display">{current.circle.name}</T>
+
+      {isOrganizer && !isActive ? (
+        <Card tone="attention">
+          <T variant="heading">Your circle isn&apos;t on yet</T>
+          <T>Subscribe to invite people and start daily check-ins.</T>
+          <Button label="See plans" onPress={() => router.push("/subscribe")} />
+        </Card>
+      ) : null}
 
       {isOrganizer && waiting.length > 0 ? (
         <Card tone="attention">

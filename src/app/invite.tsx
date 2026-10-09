@@ -1,7 +1,7 @@
 // The organizer makes a one-time join code and shares it.
 
 import * as Clipboard from "expo-clipboard";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Share, StyleSheet, Text } from "react-native";
 
@@ -12,7 +12,7 @@ import { colors, fonts } from "@/lib/theme";
 import type { MemberRole } from "@/lib/types";
 
 export default function Invite() {
-  const { current, isOrganizer } = useSession();
+  const { current, isOrganizer, isActive } = useSession();
   const circleId = current?.circle.id;
   const parentName = current?.circle.name ?? "your parent";
 
@@ -44,6 +44,16 @@ export default function Invite() {
     return (
       <Screen>
         <T>Only the person who set up this circle can invite people.</T>
+      </Screen>
+    );
+  }
+
+  if (!isActive) {
+    return (
+      <Screen>
+        <T variant="heading">Subscribe to invite people</T>
+        <T tone="muted">Your settings are saved. Inviting family, friends, and caregivers starts once your circle is on.</T>
+        <Button label="See plans" onPress={() => router.replace("/subscribe")} />
       </Screen>
     );
   }

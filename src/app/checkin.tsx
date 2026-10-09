@@ -7,7 +7,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button, Chip, Chips, ErrorText, Gap, Screen, T } from "@/components/ui";
+import { Button, Card, Chip, Chips, ErrorText, Gap, Screen, T } from "@/components/ui";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { colors, fonts, radius, space } from "@/lib/theme";
@@ -24,7 +24,7 @@ function promptText(plan: CheckinPlan): string {
 }
 
 export default function CheckinScreen() {
-  const { session, current, isOrganizer, signOut } = useSession();
+  const { session, current, isOrganizer, isActive, signOut } = useSession();
   const circleId = current?.circle.id;
   const organizerId = current?.circle.organizer_id;
 
@@ -160,6 +160,14 @@ export default function CheckinScreen() {
       <T variant="display">
         {myName ? `Hi, ${myName}` : "Hi there"}
       </T>
+
+      {isOrganizer && !isActive ? (
+        <Card tone="attention">
+          <T variant="heading">Your circle isn&apos;t on yet</T>
+          <T>Subscribe to start your daily check-ins and invite the people who look out for you.</T>
+          <Button label="See plans" onPress={() => router.push("/subscribe")} />
+        </Card>
+      ) : null}
 
       {open && plan ? (
         <>

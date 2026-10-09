@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { supabase } from "./supabase";
-import type { Membership } from "./types";
+import type { Circle, Membership } from "./types";
 
 type SessionState = {
   session: Session | null;
@@ -14,6 +14,8 @@ type SessionState = {
   // The circle this person is using: an active one if there is one, else a pending one.
   current: Membership | null;
   isOrganizer: boolean;
+  // Paid or on a pilot code. Unpaid circles can be set up but not shared.
+  isActive: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -32,7 +34,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     const { data, error } = await supabase
       .from("circle_members")
-      .select("circle_id, role, status, circle:circles(id, name, organizer_id)")
+      .select("circle_id, role, status, circle:circles(id, name, organizer_id, access:circle_access(active_until))")
       .eq("user_id", s.user.id)
       .neq("status", "removed")
       .order("joined_at", { ascending: true });
@@ -86,10 +88,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SessionState>(() => {
     const current = memberships.find((m) => m.status === "active") ?? memberships[0] ?? null;
     const isOrganizer = !!current && !!session && current.circle.organizer_id === session.user.id;
-    return { session, loading, memberships, current, isOrganizer, refresh, signOut };
+    const isActive = !!current && circleIsActive(current.circle);
+    return { session, loading, memberships, current, isOrganizer, isActive, refresh, signOut };
   }, [session, loading, memberships, refresh, signOut]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
+}
+
+export function circleIsActive(circle: Circle): boolean {
+  const access = Array.isArray(circle.access) ? circle.access[0] : circle.access;
+  if (!access) return false;
+  return access.active_until === null || Date.parse(access.active_until) > Date.now();
 }
 
 export function useSession(): SessionState {

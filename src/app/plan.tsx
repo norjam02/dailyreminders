@@ -46,7 +46,7 @@ function defaults(circleId: string): CheckinPlan {
 }
 
 export default function Plan() {
-  const { current, isOrganizer } = useSession();
+  const { current, isOrganizer, isActive } = useSession();
   const circleId = current?.circle.id;
   const parentName = current?.circle.name ?? "your parent";
   const isParent = current?.role === "parent";
@@ -141,7 +141,8 @@ export default function Plan() {
       : await supabase.from("checkin_plans").insert({ circle_id: circleId, ...fields });
     setBusy(false);
     if (saveError) return setError(errorMessage(saveError));
-    router.replace("/");
+    // Settings are free; turning the circle on is the next step.
+    router.replace(isActive ? "/" : "/subscribe");
   }
 
   return (

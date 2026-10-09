@@ -7,10 +7,15 @@ export type CheckinMode = "button" | "photo" | "selfie";
 export type ReminderFirmness = "gentle" | "normal" | "persistent";
 export type CheckinStatus = "pending" | "done" | "missed";
 
+export type CircleAccess = { active_until: string | null };
+
 export type Circle = {
   id: string;
   name: string;
   organizer_id: string;
+  // Present when the circle is paid or on a pilot code. PostgREST may return
+  // the one-to-one join as an object or a one-item list.
+  access?: CircleAccess | CircleAccess[] | null;
 };
 
 export type Membership = {

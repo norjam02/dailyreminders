@@ -48,6 +48,7 @@ before(async () => {
   as = signedIn(db);
 
   circle = (await as(users.organizer, "select public.create_circle('Mom', 'Jane') as id")).rows[0].id;
+  await db.query("insert into public.circle_access (circle_id, source) values ($1, 'manual')", [circle]);
   const parentCode = (await as(users.organizer, "select public.create_invite($1, 'parent') as code", [circle])).rows[0].code;
   await as(users.parent, "select public.redeem_invite($1, 'Mom')", [parentCode], { anonymous: true });
   await as(users.organizer, "select public.approve_member($1, $2)", [circle, users.parent]);
@@ -227,6 +228,15 @@ describe("changing the plan", () => {
     );
   });
 
+  test("no check-ins are made for a circle that isn't paid", async () => {
+    await db.query("delete from public.circle_access where circle_id = $1", [circle]);
+    await db.query("delete from public.checkins where circle_id = $1 and status = 'pending'", [circle]);
+    await tick("2026-11-19T12:00:00Z");
+    const rows = await db.query("select count(*)::int as n from public.checkins where circle_id = $1 and status = 'pending'", [circle]);
+    assert.equal(rows.rows[0].n, 0);
+    await db.query("insert into public.circle_access (circle_id, source) values ($1, 'manual')", [circle]);
+  });
+
   test("no check-ins are made for a circle without an active parent", async () => {
     const lonely = (await as(users.caregiver, "select public.create_circle('Dad', 'Pat', 'caregiver') as id")).rows[0].id;
     await as(users.caregiver, "insert into public.checkin_plans (circle_id, timezone) values ($1, 'America/Chicago')", [lonely]);
@@ -242,6 +252,7 @@ describe("a parent who is the organizer", () => {
 
   test("a miss alerts the rest of the circle right away, not the parent", async () => {
     own = (await as(users.selfParent, "select public.create_circle('Ruth', 'Ruth', 'parent') as id")).rows[0].id;
+    await db.query("insert into public.circle_access (circle_id, source) values ($1, 'manual')", [own]);
     const code = (await as(users.selfParent, "select public.create_invite($1, 'child') as code", [own])).rows[0].code;
     await as(users.son, "select public.redeem_invite($1, 'Ben')", [code]);
     await as(users.selfParent, "select public.approve_member($1, $2)", [own, users.son]);
