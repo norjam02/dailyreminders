@@ -99,7 +99,7 @@ export function errorMessage(error: unknown): string {
   const message =
     error && typeof error === "object" && "message" in error && typeof error.message === "string" ? error.message : "";
   if (!message || /network request failed|failed to fetch|fetch failed|network error|timed? ?out/i.test(message)) {
-    return "Couldn't reach Daily Check-In. Check your internet connection and try again.";
+    return "Couldn't reach DailyPulse. Check your internet connection and try again.";
   }
   return message;
 }

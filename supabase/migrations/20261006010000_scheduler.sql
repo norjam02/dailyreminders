@@ -1,4 +1,4 @@
--- Daily Check-In: the scheduler.
+-- DailyPulse: the scheduler.
 --
 -- Runs every minute inside the database:
 --   1. Creates upcoming check-ins from each plan, in the parent's time zone.

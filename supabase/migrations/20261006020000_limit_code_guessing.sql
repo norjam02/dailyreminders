@@ -1,4 +1,4 @@
--- Daily Check-In: limit join-code guessing.
+-- DailyPulse: limit join-code guessing.
 --
 -- From the security review: anyone signed in, including an anonymous user,
 -- could call redeem_invite as often as they liked and eventually guess an

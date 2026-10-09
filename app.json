@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Daily Check-In",
-    "slug": "dailyreminders",
+    "name": "DailyPulse",
+    "slug": "dailypulse",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "dailyreminders",
+    "scheme": "dailypulse",
     "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -48,7 +48,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Daily Check-In uses the camera so you can send a photo or selfie when you check in.",
+          "cameraPermission": "DailyPulse uses the camera so you can send a photo or selfie when you check in.",
           "photosPermission": false,
           "microphonePermission": false
         }

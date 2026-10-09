@@ -22,7 +22,7 @@ function Welcome() {
   return (
     <Screen scroll={false} topInset>
       <View style={styles.top}>
-        <T variant="display">Daily Check-In</T>
+        <T variant="display">DailyPulse</T>
         <Gap size="sm" />
         <T tone="muted">
           A small hello each day between a parent and the people who look after them. If a check-in doesn&apos;t come, the

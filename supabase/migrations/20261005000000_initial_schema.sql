@@ -1,4 +1,4 @@
--- Daily Check-In: initial schema for the pilot.
+-- DailyPulse: initial schema for the pilot.
 --
 -- A circle is one parent plus the family and caregivers around them. The
 -- organizer is the subscriber who set it up, either the parent's child or a

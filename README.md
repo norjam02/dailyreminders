@@ -1,14 +1,14 @@
-# Daily Check-In (working name)
+# DailyPulse
 
 A gentle daily check-in between an aging parent and their family. At times the organizer sets, the parent gets a notification and answers with one tap, a photo, or a selfie, plus an optional friendly reply. If a check-in is missed, the parent is reminded first, then the family is told.
 
-"Daily Check-In" is a placeholder. The real name is still to be chosen.
+The app was called "Daily Check-In" while it was being designed; older docs may still use that name.
 
 ## Status
 
 Pilot build: Expo SDK 57, TypeScript, and Expo Router. The database schema, access rules, and scheduler are in place and tested, and the app's first full set of screens is built. The screens typecheck and bundle for iOS and Android but have not yet been tried on a phone.
 
-The full concept test plan lives in a private doc: [Daily Check-In: Concept Test Plan](https://claude.ai/code/artifact/e9e11eff-a810-4d72-86e7-1294340414ac).
+The full concept test plan lives in a private doc: [DailyPulse: Concept Test Plan](https://claude.ai/code/artifact/e9e11eff-a810-4d72-86e7-1294340414ac).
 
 ## The pilot
 
@@ -146,7 +146,7 @@ Design: Atkinson Hyperlegible (made for readers with low vision), large type, 56
 
 ### Supabase email setup
 
-Organizers sign in with a code sent by email. Supabase's default emails send a link instead, so in the dashboard under **Authentication → Emails**, edit the **Magic Link** and **Confirm signup** templates to include the code, for example `Your Daily Check-In code is {{ .Token }}`.
+Organizers sign in with a code sent by email. Supabase's default emails send a link instead, so in the dashboard under **Authentication → Emails**, edit the **Magic Link** and **Confirm signup** templates to include the code, for example `Your DailyPulse code is {{ .Token }}`.
 
 Supabase's built-in email sender only allows a few emails an hour. Set up your own email provider (SMTP) under the same settings before the pilot.
 
@@ -165,7 +165,7 @@ Supabase's built-in email sender only allows a few emails an hour. Set up your o
 
 ## Open decisions
 
-- **Final name**, with a trademark, domain, and App Store check.
+- **Name: DailyPulse (chosen).** Still to do: a trademark search and a domain. The App Store already has an app named "DailyPulse: Mood & Energy", and store names must be unique, so the listing needs a subtitle-style name such as "DailyPulse: Family Check-In". The name under the icon can still be DailyPulse.
 
 ## Running it
 

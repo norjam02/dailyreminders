@@ -74,7 +74,7 @@ export default function Invite() {
   }
 
   const message = code
-    ? `Join ${parentName}'s Daily Check-In circle. Install the app, tap "I have a join code", and enter ${code}. The code works once and expires in a day.`
+    ? `Join ${parentName}'s DailyPulse circle. Install the app, tap "I have a join code", and enter ${code}. The code works once and expires in a day.`
     : "";
 
   if (code) {
