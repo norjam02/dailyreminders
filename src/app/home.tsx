@@ -90,7 +90,7 @@ export default function Home() {
 
       {isOrganizer && !isActive ? (
         <Card tone="attention">
-          <T variant="heading">Your circle isn&apos;t on yet</T>
+          <T variant="heading">Your circle isn&apos;t active yet</T>
           <T>Subscribe to invite people and start daily check-ins.</T>
           <Button label="See plans" onPress={() => router.push("/subscribe")} />
         </Card>
@@ -118,7 +118,11 @@ export default function Home() {
       {loaded && plan && !parent ? (
         <Card>
           <T variant="heading">{current.circle.name} hasn&apos;t joined yet</T>
-          <T tone="muted">Check-ins start once they join with a code and you approve them.</T>
+          <T tone="muted">
+            {isOrganizer
+              ? "Check-ins start once they join with a code and you approve them."
+              : "Check-ins start once they join."}
+          </T>
           {isOrganizer ? <Button label="Invite them" onPress={() => router.push("/invite")} /> : null}
         </Card>
       ) : null}
@@ -215,7 +219,7 @@ function CheckinCard({
         {when}
       </T>
       <T variant="heading">Waiting for {parentName}</T>
-      {checkin.snoozed_until ? <T tone="muted">They tapped Later.</T> : null}
+      {checkin.snoozed_until ? <T tone="muted">They asked to be reminded later.</T> : null}
     </Card>
   );
 }

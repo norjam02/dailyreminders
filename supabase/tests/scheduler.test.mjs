@@ -271,6 +271,19 @@ describe("a parent who is the organizer", () => {
     await tick("2026-11-20T18:15:00Z");
     assert.deepEqual(await newMessages(), []);
   });
+
+  test("an on-time check-in tells everyone in their circle", async () => {
+    await tick("2026-11-21T17:00:00Z");
+    await newMessages();
+    const ci = (await db.query("select id from public.checkins where circle_id = $1 and scheduled_for = '2026-11-21T17:00:00Z'", [own])).rows[0].id;
+    await as(users.selfParent, "select public.respond_checkin($1, 'button', null, null)", [ci]);
+    assert.deepEqual(await newMessages(), [["son", "Ruth checked in", "Checked in."]]);
+  });
+
+  test("a selfie prompt says so", async () => {
+    const text = (await db.query("select public.checkin_prompt_text('photo', 'a selfie', null) as t")).rows[0].t;
+    assert.equal(text, "Send a quick selfie.");
+  });
 });
 
 describe("sending", () => {

@@ -7,7 +7,7 @@ import * as Notifications from "expo-notifications";
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { registerForPush } from "@/lib/push";
 import { SessionProvider, useSession } from "@/lib/session";
@@ -31,11 +31,18 @@ function Navigator() {
     if (userId && active) registerForPush(userId).catch(() => {});
   }, [userId, active]);
 
-  // Tapping a notification opens the app's main screen for this person.
+  // Tapping a notification opens the app's main screen for this person: the
+  // check-in for the person who checks in, the circle's home for everyone
+  // else. Also covers a tap that launched the app, once it's ready.
+  const lastResponse = Notifications.useLastNotificationResponse();
+  const handledId = useRef<string | null>(null);
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(() => router.replace("/"));
-    return () => subscription.remove();
-  }, []);
+    if (!ready || !lastResponse) return;
+    const id = lastResponse.notification.request.identifier;
+    if (handledId.current === id) return;
+    handledId.current = id;
+    router.replace("/");
+  }, [ready, lastResponse]);
 
   if (!ready) return null;
 

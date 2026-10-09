@@ -55,7 +55,7 @@ export default function Invite() {
     return (
       <Screen>
         <T variant="heading">Subscribe to invite people</T>
-        <T tone="muted">Your settings are saved. Inviting caregivers, support workers, family, and friends starts once your circle is on.</T>
+        <T tone="muted">Your settings are saved. Inviting caregivers, support workers, family, and friends starts once your circle is active.</T>
         <Button label="See plans" onPress={() => router.replace("/subscribe")} />
       </Screen>
     );

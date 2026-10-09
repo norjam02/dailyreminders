@@ -3,6 +3,7 @@
 
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
+import { AccessibilityInfo } from "react-native";
 
 import { Button, Chip, Chips, Choice, ErrorText, Field, Screen, Section, T } from "@/components/ui";
 import { errorMessage, useSession } from "@/lib/session";
@@ -25,7 +26,7 @@ const MODES: { mode: CheckinMode; label: string; description: string }[] = [
 const FIRMNESS: { value: ReminderFirmness; label: string; description: string }[] = [
   { value: "gentle", label: "Gentle", description: "Just the one notification." },
   { value: "normal", label: "Normal", description: "Two more reminders, 20 minutes apart." },
-  { value: "persistent", label: "Persistent", description: "A reminder every 10 minutes until the wait runs out." },
+  { value: "persistent", label: "Persistent", description: "A reminder every 10 minutes until the circle is told." },
 ];
 
 const WAITS: { value: 30 | 60 | 120; label: string }[] = [
@@ -118,9 +119,10 @@ export default function Plan() {
   function addOwnReply() {
     if (!plan) return;
     const reply = ownReply.trim().replace(/\s+/g, " ");
-    if (!reply) return;
+    if (!reply || plan.quick_replies.length >= MAX_REPLIES) return;
     if (!plan.quick_replies.some((r) => r.toLowerCase() === reply.toLowerCase())) {
       update({ quick_replies: [...plan.quick_replies, reply] });
+      AccessibilityInfo.announceForAccessibility(`Added "${reply}"`);
     }
     setOwnReply("");
   }
@@ -183,6 +185,7 @@ export default function Plan() {
                 label={p}
                 selected={(plan.photo_prompt ?? PHOTO_PROMPTS[0]) === p}
                 onPress={() => update({ photo_prompt: p })}
+                single
               />
             ))}
           </Chips>
@@ -211,6 +214,7 @@ export default function Plan() {
               label={z.label}
               selected={plan.timezone === z.zone}
               onPress={() => update({ timezone: z.zone })}
+                single
             />
           ))}
         </Chips>
@@ -228,7 +232,14 @@ export default function Plan() {
         ))}
       </Section>
 
-      <Section title="Wait before telling you" hint="If there's no check-in by then, you'll get a notification.">
+      <Section
+        title={isParent ? "Wait before telling your circle" : "Wait before telling you"}
+        hint={
+          isParent
+            ? "If you haven't checked in by then, the people in your circle get a notification."
+            : "If there's no check-in by then, you'll get a notification."
+        }
+      >
         <Chips>
           {WAITS.map((w) => (
             <Chip
@@ -236,6 +247,7 @@ export default function Plan() {
               label={w.label}
               selected={plan.wait_minutes === w.value}
               onPress={() => update({ wait_minutes: w.value })}
+                single
             />
           ))}
         </Chips>

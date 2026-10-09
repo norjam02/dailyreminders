@@ -12,13 +12,16 @@ import { space } from "@/lib/theme";
 import type { Member } from "@/lib/types";
 
 export default function Members() {
-  const { session, current, isOrganizer, memberLimit, refresh } = useSession();
+  const { session, current, isOrganizer, memberLimit, refresh, signOut } = useSession();
   const circleId = current?.circle.id;
   const organizerId = current?.circle.organizer_id;
 
   const [members, setMembers] = useState<Member[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const viewerIsParent = current?.role === "parent";
+  const personName = current?.circle.name ?? "them";
 
   const load = useCallback(async () => {
     if (!circleId) return;
@@ -49,14 +52,19 @@ export default function Members() {
 
   function remove(member: Member) {
     const self = member.user_id === session?.user.id;
+    const pending = member.status === "pending";
     const name = member.profile?.display_name ?? "this person";
     Alert.alert(
-      self ? "Leave this circle?" : `Remove ${name}?`,
-      self ? "You'll stop getting check-ins and alerts." : `${name} will stop getting check-ins and alerts.`,
+      self ? "Leave this circle?" : pending ? `Decline ${name}'s request?` : `Remove ${name}?`,
+      self
+        ? "You'll stop getting check-ins and alerts."
+        : pending
+          ? `${name} won't join the circle.`
+          : `${name} will stop getting check-ins and alerts.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: self ? "Leave" : "Remove",
+          text: self ? "Leave" : pending ? "Decline" : "Remove",
           style: "destructive",
           onPress: async () => {
             setBusyId(member.user_id);
@@ -79,6 +87,30 @@ export default function Members() {
     );
   }
 
+  function deleteAccount() {
+    Alert.alert(
+      "Delete your account?",
+      isOrganizer
+        ? "This deletes your account and the circle you set up, with its check-ins and photos, for everyone in it. It can't be undone. If you pay for a subscription, cancel it in your phone's App Store or Google Play settings too."
+        : "This deletes your account and removes you from the circle. It can't be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            setError(null);
+            const { error: fnError } = await supabase.functions.invoke("delete-account", { body: {} });
+            setDeleting(false);
+            if (fnError) return setError("Couldn't delete your account. Check your connection and try again.");
+            await signOut();
+          },
+        },
+      ],
+    );
+  }
+
   const waiting = members.filter((m) => m.status === "pending");
   const active = members.filter((m) => m.status === "active");
 
@@ -94,8 +126,19 @@ export default function Members() {
             <Card key={m.user_id} tone="attention">
               <T variant="heading">{m.profile?.display_name ?? "Someone"}</T>
               <T tone="muted">{m.role === "parent" ? "Will check in each day" : "Will see check-ins and hear about missed ones"}</T>
-              <Button label="Approve" onPress={() => approve(m)} busy={busyId === m.user_id} />
-              <Button label="Decline" variant="quiet" onPress={() => remove(m)} disabled={busyId === m.user_id} />
+              <Button
+                label="Approve"
+                a11yLabel={`Approve ${m.profile?.display_name ?? "this person"}`}
+                onPress={() => approve(m)}
+                busy={busyId === m.user_id}
+              />
+              <Button
+                label="Decline"
+                a11yLabel={`Decline ${m.profile?.display_name ?? "this person"}`}
+                variant="quiet"
+                onPress={() => remove(m)}
+                disabled={busyId === m.user_id}
+              />
             </Card>
           ))}
         </View>
@@ -119,12 +162,13 @@ export default function Members() {
                 {isMe ? " (you)" : ""}
               </T>
               <T tone="muted">
-                {m.role === "parent" ? "Checks in each day" : "Looks out for them"}
+                {m.role === "parent" ? "Checks in each day" : viewerIsParent ? "Looks out for you" : `Looks out for ${personName}`}
                 {isOrg ? ", set up this circle" : ""}
               </T>
               {canRemove ? (
                 <Button
                   label={isMe ? "Leave the circle" : "Remove"}
+                  a11yLabel={isMe ? "Leave the circle" : `Remove ${m.profile?.display_name ?? "this person"}`}
                   variant="quiet"
                   onPress={() => remove(m)}
                   disabled={busyId === m.user_id}
@@ -135,6 +179,7 @@ export default function Members() {
         })}
       </View>
 
+      <Button label="Delete my account" variant="quiet" onPress={deleteAccount} busy={deleting} />
     </Screen>
   );
 }

@@ -4,6 +4,8 @@ import type { Session } from "@supabase/supabase-js";
 import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { signOutOfStore } from "./billing";
+import { unregisterPush } from "./push";
 import { supabase } from "./supabase";
 import type { Circle, Membership } from "./types";
 
@@ -79,6 +81,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [loadMemberships]);
 
   const signOut = useCallback(async () => {
+    // While still signed in: stop this phone getting this account's alerts,
+    // and detach the store account so the next person starts clean.
+    await unregisterPush().catch(() => {});
+    await signOutOfStore();
     await supabase.auth.signOut();
     setSession(null);
     setMemberships([]);

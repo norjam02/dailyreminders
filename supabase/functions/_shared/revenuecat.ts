@@ -3,13 +3,9 @@
 // to match. Always reads the current state from RevenueCat rather than
 // trusting a single event, so repeated or out-of-order events are harmless.
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { admin } from "./admin.ts";
 
 export const ENTITLEMENT = "circle";
-
-export const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
-  auth: { persistSession: false },
-});
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

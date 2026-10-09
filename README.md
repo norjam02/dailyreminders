@@ -45,7 +45,7 @@ These are starting guesses to test, not findings.
 
 - Texting, SMS, and RCS. App notifications only.
 - The "Something's not right" button. Its wording is tested on a clickable prototype, not in the pilot, because no one can watch for it around the clock.
-- In-app payments. The day-14 payment link is sent separately.
+- Real purchases. Pilot circles are turned on with pilot codes (10 people, at least 30 days). In-app purchase is built but stays off in pilot builds, which ship without RevenueCat keys; on day 14 families are offered a subscription.
 - Medications or any health data.
 - Chat, calling, or location tracking.
 
@@ -95,12 +95,13 @@ When a circle is full, inviting, joining, and approving stop, and the organizer 
 
 The rule lives in the database (`circle_access` and `circle_is_active`), so the app can't get around it. Only the server writes `circle_access`.
 
-- **Pilot codes** (`access_codes`) turn a circle on for a set number of days. The organizer enters one on the Subscribe screen. Make one in the SQL Editor:
+- **Pilot codes** (`access_codes`) turn a circle on for a set number of days, starting when the code is entered. The organizer enters one on the Subscribe screen. Make a random 12-character code in the SQL Editor (days, uses, circle size, note):
 
   ```sql
-  insert into public.access_codes (code, days, uses_left, expires_at, max_members, note)
-  values ('PILOT2026', 30, 20, '2026-12-31', 4, 'November pilot');
+  select public.new_pilot_code(45, 15, 10, 'November pilot');
   ```
+
+  Codes must be at least 10 characters, so they can't be guessed. For the pilot, use 10 people and enough days to cover the whole pilot from the day families redeem.
 
 - **Turning a circle on by hand:** `insert into public.circle_access (circle_id, source) values ('<circle id>', 'manual');`
 - **Store purchases** go through the App Store and Google Play, managed by [RevenueCat](https://www.revenuecat.com). The organizer subscribes with their Apple or Google account; one subscription turns on every circle they set up.
@@ -127,10 +128,11 @@ A store result never cuts short a pilot code that's still running.
    ```bash
    npx supabase functions deploy revenuecat-webhook --no-verify-jwt
    npx supabase functions deploy sync-subscription --no-verify-jwt
+   npx supabase functions deploy delete-account --no-verify-jwt
    ```
 
 7. **Webhook:** in RevenueCat, add a webhook to `https://<project-ref>.supabase.co/functions/v1/revenuecat-webhook` with the authorization header `Bearer <REVENUECAT_WEBHOOK_AUTH>`.
-8. **Terms and privacy:** Apple requires links to Terms of Use and a Privacy Policy on the subscribe screen and in the store listing. These need web pages.
+8. **Terms and privacy:** Apple requires links to Terms of Use and a Privacy Policy on the subscribe screen and in the store listing. Publish both pages and set `EXPO_PUBLIC_TERMS_URL` and `EXPO_PUBLIC_PRIVACY_URL`; the subscribe screen shows the links once they are set.
 
 Real purchases only work in a development or store build. In Expo Go, RevenueCat runs in a preview mode with no real purchases; pilot codes still work there.
 
@@ -173,6 +175,10 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
    Or run each file in `supabase/migrations/` in order in the dashboard's SQL Editor.
 
 4. Copy `.env.example` to `.env.local` and fill in the project URL and publishable key. `.env.local` is ignored by git.
+
+### Deleting an account
+
+My Circle has **Delete my account** (required by the App Store). The `delete-account` function removes the sign-in account, the person's profile, memberships, and push tokens; any circle they set up, for everyone in it; and check-in photos in circles where they're the person checking in. It can't cancel a store subscription, so the app tells organizers to cancel in the App Store or Google Play.
 
 ### Still to build
 

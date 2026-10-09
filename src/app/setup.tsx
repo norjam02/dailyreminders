@@ -90,7 +90,7 @@ export default function Setup() {
         />
       ) : null}
       <ErrorText message={error} />
-      <Button label="Create the circle" onPress={create} busy={busy} disabled={!role} />
+      <Button label="Create the circle" onPress={create} busy={busy} />
       <Button label="Sign out" variant="quiet" onPress={signOut} disabled={busy} />
     </Screen>
   );

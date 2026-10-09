@@ -8,9 +8,18 @@
 
 import { isOurUserId, syncUser } from "../_shared/revenuecat.ts";
 
+// Compares secrets in constant time, so timing can't reveal them.
+function sameSecret(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+
 Deno.serve(async (req) => {
   const expected = Deno.env.get("REVENUECAT_WEBHOOK_AUTH");
-  if (!expected || req.headers.get("Authorization") !== `Bearer ${expected}`) {
+  if (!expected || !sameSecret(req.headers.get("Authorization") ?? "", `Bearer ${expected}`)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

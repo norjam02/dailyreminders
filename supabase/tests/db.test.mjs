@@ -115,11 +115,12 @@ describe("circles and joining", () => {
   });
 
   test("a pilot code activates the circle", async () => {
-    await db.query("insert into public.access_codes (code, days, uses_left, expires_at) values ('PILOT2026', 30, 1, now() + interval '30 days')");
+    await db.query("insert into public.access_codes (code, days, uses_left, expires_at) values ('PILOT2026AB', 30, 1, now() + interval '30 days')");
     assert.equal(await value(users.child, "select public.redeem_access_code($1, 'nope')", [circle]), null);
-    const until = await value(users.child, "select public.redeem_access_code($1, ' pilot2026 ')", [circle]);
+    const until = await value(users.child, "select public.redeem_access_code($1, ' pilot2026ab ')", [circle]);
     assert.ok(until > new Date(Date.now() + 29 * 86_400_000));
-    assert.equal(await value(users.child, "select public.circle_is_active($1)", [circle]), true);
+    assert.equal((await db.query("select public.circle_is_active($1) as on", [circle])).rows[0].on, true);
+    await assert.rejects(as(users.child, "select public.circle_is_active($1)", [circle]), /permission denied/);
     assert.equal(await value(users.child, "select source from public.circle_access where circle_id = $1", [circle]), "pilot_code");
   });
 
@@ -499,12 +500,20 @@ describe("circles and joining", () => {
     test("a purchase turns on the organizer's circle", async () => {
       await apply(true, "apple", "yearly", later);
       assert.deepEqual(await access(), { source: "apple", plan: "yearly", on: true });
-      assert.equal(await value(users.storeBuyer, "select public.circle_is_active($1)", [storeCircle]), true);
+      assert.equal((await db.query("select public.circle_is_active($1) as on", [storeCircle])).rows[0].on, true);
     });
 
     test("when the subscription ends, the circle turns off", async () => {
       await apply(false, null, null, null);
       assert.equal((await access()).on, false);
+    });
+
+    test("a pilot code that outlasts a store subscription takes over", async () => {
+      await apply(true, "apple", "monthly", later);
+      await db.query("insert into public.access_codes (code, days, uses_left, expires_at) values ('LONGPILOT90', 90, 1, now() + interval '30 days')");
+      await value(users.storeBuyer, "select public.redeem_access_code($1, 'LONGPILOT90')", [storeCircle]);
+      await apply(false, null, null, null);
+      assert.deepEqual(await access(), { source: "pilot_code", plan: null, on: true });
     });
 
     test("a store result doesn't cut short a longer pilot code", async () => {
@@ -536,7 +545,7 @@ describe("circles and joining", () => {
       await join(users.member1, "One");
       await join(users.member2, "Two");
       await join(users.member3, "Three");
-      assert.equal(await value(users.sizeOrganizer, "select public.circle_member_count($1)", [sized]), 4);
+      assert.equal((await db.query("select public.circle_member_count($1) as n", [sized])).rows[0].n, 4);
       await assert.rejects(
         as(users.sizeOrganizer, "select public.create_invite($1, 'family')", [sized]),
         /Your circle is full/,
@@ -553,7 +562,7 @@ describe("circles and joining", () => {
     test("a Plus plan raises the limit to 10, and no plan goes higher", async () => {
       await db.query("update public.circle_access set max_members = 10 where circle_id = $1", [sized]);
       await join(users.member4, "Four");
-      assert.equal(await value(users.sizeOrganizer, "select public.circle_member_count($1)", [sized]), 5);
+      assert.equal((await db.query("select public.circle_member_count($1) as n", [sized])).rows[0].n, 5);
       await assert.rejects(db.query("update public.circle_access set max_members = 11 where circle_id = $1", [sized]), /check/);
     });
 
@@ -566,6 +575,40 @@ describe("circles and joining", () => {
         as(users.sizeOrganizer, "select public.approve_member($1, $2)", [sized, users.member4]),
         /Your circle is full/,
       );
+    });
+  });
+
+  describe("push tokens and pilot codes", () => {
+    test("a push token belongs to the last account that signed in on the phone", async () => {
+      await as(users.member1, "select public.register_push_token('ExponentPushToken[shared]', 'ios')");
+      await as(users.member2, "select public.register_push_token('ExponentPushToken[shared]', 'ios')");
+      const rows = await db.query("select user_id from public.push_tokens where token = 'ExponentPushToken[shared]'");
+      assert.deepEqual(rows.rows.map((r) => r.user_id), [users.member2]);
+    });
+
+    test("short pilot codes are refused and new_pilot_code makes long random ones", async () => {
+      await assert.rejects(
+        db.query("insert into public.access_codes (code, days, uses_left, expires_at) values ('SHORT1', 30, 1, now() + interval '1 day')"),
+        /access_codes_long_enough/,
+      );
+      const code = (await db.query("select public.new_pilot_code(30, 5, 10, 'test') as code")).rows[0].code;
+      assert.match(code, /^[A-Z2-9]{12}$/);
+      await assert.rejects(as(users.member1, "select public.new_pilot_code(30, 5, 10)"), /permission denied/);
+    });
+  });
+
+  describe("deleting an account", () => {
+    test("an organizer's circles go with them; a person checking in loses their photos", async () => {
+      const gone = await value(users.member3, "select public.create_circle('Lou', 'Max', 'family')");
+      const ids = (await db.query("select public.delete_account_data($1) as ids", [users.member3])).rows[0].ids;
+      assert.ok(ids.includes(gone));
+      assert.equal((await db.query("select count(*)::int as n from public.circles where id = $1", [gone])).rows[0].n, 0);
+      await db.query("delete from auth.users where id = $1", [users.member3]);
+      assert.equal((await db.query("select count(*)::int as n from public.profiles where id = $1", [users.member3])).rows[0].n, 0);
+    });
+
+    test("the app can't call it", async () => {
+      await assert.rejects(as(users.member4, "select public.delete_account_data($1)", [users.member4]), /permission denied/);
     });
   });
 

@@ -6,7 +6,8 @@
 // Deploy:  npx supabase functions deploy sync-subscription --no-verify-jwt
 // (the function checks the session itself)
 
-import { admin, syncUser } from "../_shared/revenuecat.ts";
+import { admin } from "../_shared/admin.ts";
+import { syncUser } from "../_shared/revenuecat.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

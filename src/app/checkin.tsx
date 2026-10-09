@@ -5,7 +5,7 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, AppState, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button, Card, Chip, Chips, ErrorText, Gap, Screen, T } from "@/components/ui";
 import { errorMessage, useSession } from "@/lib/session";
@@ -103,6 +103,7 @@ export default function CheckinScreen() {
     });
     if (rpcError) throw rpcError;
     setReply(null);
+    AccessibilityInfo.announceForAccessibility("You checked in. Thank you.");
     await load();
   }
 
@@ -117,7 +118,7 @@ export default function CheckinScreen() {
       }
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        setError("The camera is turned off for this app. Turn it on in Settings, or just check in below.");
+        setError('The camera is off for DailyPulse. You can still check in: tap "Just check in" below.');
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -163,7 +164,7 @@ export default function CheckinScreen() {
 
       {isOrganizer && !isActive ? (
         <Card tone="attention">
-          <T variant="heading">Your circle isn&apos;t on yet</T>
+          <T variant="heading">Your circle isn&apos;t active yet</T>
           <T>Subscribe to start your daily check-ins and invite the people who look out for you.</T>
           <Button label="See plans" onPress={() => router.push("/subscribe")} />
         </Card>
@@ -181,9 +182,14 @@ export default function CheckinScreen() {
               </T>
               <Chips>
                 {plan.quick_replies.map((r) => (
-                  <Chip key={r} label={r} selected={reply === r} onPress={() => setReply(reply === r ? null : r)} />
+                  <Chip key={r} label={r} single selected={reply === r} onPress={() => setReply(reply === r ? null : r)} />
                 ))}
               </Chips>
+              {reply ? (
+                <T variant="small" tone="muted">
+                  &ldquo;{reply}&rdquo; will be sent when you check in.
+                </T>
+              ) : null}
             </View>
           ) : null}
 
@@ -192,6 +198,7 @@ export default function CheckinScreen() {
             busy={busy === "checkin"}
             onPress={() => checkIn(plan.mode)}
           />
+          <ErrorText message={error} />
 
           {plan.mode !== "button" ? (
             <Button
@@ -219,8 +226,6 @@ export default function CheckinScreen() {
               Reminders are paused until {clockTime(open.snoozed_until, zone)}.
             </T>
           ) : null}
-
-          <ErrorText message={error} />
         </>
       ) : lastDone && Date.now() - Date.parse(lastDone.scheduled_for) < 12 * HOUR ? (
         <>

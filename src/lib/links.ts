@@ -3,3 +3,8 @@
 // links; after launch, a page (for example on condorllc.org) that sends
 // iPhones to the App Store and Android phones to Google Play.
 export const DOWNLOAD_URL = process.env.EXPO_PUBLIC_DOWNLOAD_URL?.trim() || null;
+
+// Terms of Use and Privacy Policy pages. Apple requires both on the
+// subscribe screen and in the App Store listing.
+export const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL?.trim() || null;
+export const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL?.trim() || null;

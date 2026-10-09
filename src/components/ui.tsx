@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import {
   AccessibilityInfo,
+  Platform,
   ActivityIndicator,
   Pressable,
   RefreshControl,
@@ -90,12 +91,15 @@ export function T({
 
 export function Button({
   label,
+  a11yLabel,
   onPress,
   variant = "primary",
   disabled,
   busy,
 }: {
   label: string;
+  // What a screen reader says, when it should say more than the label.
+  a11yLabel?: string;
   onPress: () => void;
   variant?: "primary" | "secondary" | "quiet";
   disabled?: boolean;
@@ -107,6 +111,8 @@ export function Button({
       onPress={onPress}
       disabled={inactive}
       accessibilityRole="button"
+      // Keeps the button's name while the spinner replaces its label.
+      accessibilityLabel={a11yLabel ?? label}
       accessibilityState={{ disabled: !!inactive, busy: !!busy }}
       style={({ pressed }) => [
         styles.button,
@@ -182,23 +188,26 @@ export function Choice({
   );
 }
 
-// A compact selectable chip, for hours and quick replies.
+// A compact selectable chip, for hours and quick replies. `single` marks a
+// pick-one group, so screen readers say "radio button", not "checkbox".
 export function Chip({
   label,
   selected,
   onPress,
   disabled,
+  single,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
   disabled?: boolean;
+  single?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      accessibilityRole="checkbox"
+      accessibilityRole={single ? "radio" : "checkbox"}
       accessibilityState={{ checked: selected, disabled: !!disabled }}
       style={[styles.chip, selected && styles.chipSelected, disabled && !selected && styles.inactive]}
     >
@@ -235,10 +244,12 @@ export function Card({ children, tone = "plain" }: { children: ReactNode; tone?:
   );
 }
 
-// Errors are announced to screen readers as soon as they appear.
+// Errors are announced to screen readers as soon as they appear: on Android
+// by the live region, on iPhone by an announcement (not both, or Android
+// reads it twice).
 export function ErrorText({ message }: { message: string | null }) {
   useEffect(() => {
-    if (message) AccessibilityInfo.announceForAccessibility(message);
+    if (message && Platform.OS === "ios") AccessibilityInfo.announceForAccessibility(message);
   }, [message]);
   if (!message) return null;
   return (

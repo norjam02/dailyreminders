@@ -19,7 +19,10 @@ Notifications.setNotificationHandler({
 
 export type PushResult = "registered" | "denied" | "unavailable";
 
-export async function registerForPush(userId: string): Promise<PushResult> {
+// This phone's token, once registered, so sign-out can remove it.
+let registeredToken: string | null = null;
+
+export async function registerForPush(_userId: string): Promise<PushResult> {
   // Simulators and the web can't receive push notifications.
   if (!Device.isDevice || (Platform.OS !== "ios" && Platform.OS !== "android")) return "unavailable";
 
@@ -42,10 +45,17 @@ export async function registerForPush(userId: string): Promise<PushResult> {
   if (!projectId) return "unavailable";
 
   const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-  const { error } = await supabase.from("push_tokens").upsert(
-    { user_id: userId, token, platform: Platform.OS, updated_at: new Date().toISOString() },
-    { onConflict: "user_id,token" },
-  );
+  // Moves the token to this account if someone else used this phone before.
+  const { error } = await supabase.rpc("register_push_token", { p_token: token, p_platform: Platform.OS });
   if (error) throw error;
+  registeredToken = token;
   return "registered";
+}
+
+// On sign-out: stop sending this account's notifications to this phone.
+export async function unregisterPush(): Promise<void> {
+  if (!registeredToken) return;
+  const token = registeredToken;
+  registeredToken = null;
+  await supabase.from("push_tokens").delete().eq("token", token);
 }

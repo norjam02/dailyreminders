@@ -59,6 +59,7 @@ export default function Join() {
       />
       <Field
         label="Join code"
+        hint="6 letters and numbers, from your invite message."
         value={code}
         onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
         autoCapitalize="characters"
