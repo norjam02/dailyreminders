@@ -1,6 +1,6 @@
 # DailyPulse
 
-A gentle daily check-in between an aging parent and their family. At times the organizer sets, the parent gets a notification and answers with one tap, a photo, or a selfie, plus an optional friendly reply. If a check-in is missed, the parent is reminded first, then the family is told.
+A small daily check-in between someone and the people who look out for them. The person checking in might be an aging parent, an adult with intellectual or developmental disabilities, or anyone living on their own; their circle might be family, friends, caregivers, or support workers. At times the organizer sets, the person gets a notification and answers with one tap or a photo, plus an optional friendly reply. If a check-in is missed, they're reminded first, then their circle is told.
 
 The app was called "Daily Check-In" while it was being designed; older docs may still use that name.
 

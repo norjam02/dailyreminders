@@ -14,7 +14,7 @@ import type { MemberRole } from "@/lib/types";
 // stored as family.
 const ROLES: { role: MemberRole; label: string; description: string }[] = [
   { role: "parent", label: "Myself", description: "You check in each day, and the people you invite hear if you miss one." },
-  { role: "family", label: "Someone I care for", description: "As their caregiver, friend, or family member." },
+  { role: "family", label: "Someone I care for", description: "As their caregiver, support worker, friend, or family member." },
 ];
 
 export default function Setup() {
@@ -71,7 +71,7 @@ export default function Setup() {
       {role && !forMyself ? (
         <Field
           label="Their name"
-          hint="What you call them, like Mom or Grandpa Joe."
+          hint="What their circle calls them, like Sam or Grandpa Joe."
           value={parentName}
           onChangeText={setParentName}
           autoCapitalize="words"
@@ -81,7 +81,7 @@ export default function Setup() {
       {role ? (
         <Field
           label="Your name"
-          hint={forMyself ? "How you'll appear to your family." : "How you'll appear to them and the family."}
+          hint={forMyself ? "How you'll appear to your circle." : "How you'll appear to them and their circle."}
           value={yourName}
           onChangeText={setYourName}
           autoCapitalize="words"

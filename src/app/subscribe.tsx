@@ -72,13 +72,13 @@ export default function Subscribe() {
   const benefits = forMyself
     ? [
         "A daily reminder on your phone to check in",
-        "Invite family, friends, and caregivers",
+        "Invite caregivers, support workers, family, and friends",
         "They hear if you miss a check-in",
         "Your photos and replies reach them",
       ]
     : [
         `A daily reminder on ${name}'s phone to check in`,
-        "Invite family, friends, and caregivers",
+        "Invite caregivers, support workers, family, and friends",
         "An alert if a check-in is missed",
         `Photos and replies from ${name}`,
       ];

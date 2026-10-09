@@ -171,7 +171,7 @@ describe("circles and joining", () => {
   test("a circle cannot get a second parent", async () => {
     await assert.rejects(
       as(users.child, "select public.create_invite($1, 'parent')", [circle]),
-      /already has a parent/,
+      /already checks in/,
     );
   });
 
@@ -426,7 +426,7 @@ describe("circles and joining", () => {
     test("their circle cannot get a second parent", async () => {
       await assert.rejects(
         as(users.selfParent, "select public.create_invite($1, 'parent')", [ownCircle]),
-        /already has a parent/,
+        /already checks in/,
       );
     });
 

@@ -48,7 +48,7 @@ function defaults(circleId: string): CheckinPlan {
 export default function Plan() {
   const { current, isOrganizer, isActive } = useSession();
   const circleId = current?.circle.id;
-  const parentName = current?.circle.name ?? "your parent";
+  const parentName = current?.circle.name ?? "them";
   const isParent = current?.role === "parent";
 
   const [plan, setPlan] = useState<CheckinPlan | null>(null);
@@ -257,7 +257,7 @@ export default function Plan() {
       {extra === "note" ? (
         <Field
           label="Your note"
-          placeholder="Morning, Mom. Coffee time?"
+          placeholder="Good morning! Coffee time?"
           value={plan.personal_note ?? ""}
           onChangeText={(v) => update({ personal_note: v })}
           maxLength={120}

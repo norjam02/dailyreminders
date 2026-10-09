@@ -16,7 +16,7 @@ export default function Join() {
   const [error, setError] = useState<string | null>(null);
 
   async function join() {
-    if (!name.trim()) return setError("Add your name so the family knows it's you.");
+    if (!name.trim()) return setError("Add your name so your circle knows it's you.");
     if (code.trim().length !== 6) return setError("Join codes are six letters and numbers.");
     setBusy(true);
     setError(null);
@@ -48,10 +48,10 @@ export default function Join() {
 
   return (
     <Screen>
-      <T tone="muted">Someone in the family sent you a code. Enter it here to join their circle.</T>
+      <T tone="muted">Someone sent you a code to join their DailyPulse circle. Enter it here.</T>
       <Field
         label="Your name"
-        hint="What the family calls you, like Mom or Pat."
+        hint="What your circle calls you, like Pat or Grandma."
         value={name}
         onChangeText={setName}
         autoCapitalize="words"

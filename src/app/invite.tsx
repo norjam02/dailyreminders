@@ -14,7 +14,7 @@ import type { MemberRole } from "@/lib/types";
 export default function Invite() {
   const { current, isOrganizer, isActive } = useSession();
   const circleId = current?.circle.id;
-  const parentName = current?.circle.name ?? "your parent";
+  const parentName = current?.circle.name ?? "them";
 
   const [hasParent, setHasParent] = useState(true);
   const [role, setRole] = useState<MemberRole | null>(null);
@@ -52,7 +52,7 @@ export default function Invite() {
     return (
       <Screen>
         <T variant="heading">Subscribe to invite people</T>
-        <T tone="muted">Your settings are saved. Inviting family, friends, and caregivers starts once your circle is on.</T>
+        <T tone="muted">Your settings are saved. Inviting caregivers, support workers, family, and friends starts once your circle is on.</T>
         <Button label="See plans" onPress={() => router.replace("/subscribe")} />
       </Screen>
     );
@@ -66,7 +66,7 @@ export default function Invite() {
     {
       role: "family",
       label: isParent ? "Someone who looks out for you" : `Someone who looks out for ${parentName}`,
-      description: "A caregiver, friend, or family member. They see check-ins and hear if one is missed.",
+      description: "A caregiver, support worker, friend, or family member. They see check-ins and hear if one is missed.",
     },
   ];
 

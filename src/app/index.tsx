@@ -25,8 +25,8 @@ function Welcome() {
         <T variant="display">DailyPulse</T>
         <Gap size="sm" />
         <T tone="muted">
-          A small hello each day between a person and the people who look after them. If a check-in doesn&apos;t come,
-          the circle hears about it.
+          A small hello each day between someone and the people who look out for them. If a check-in doesn&apos;t come,
+          their circle hears about it.
         </T>
       </View>
       <View style={styles.actions}>

@@ -91,7 +91,7 @@ export default function CheckinScreen() {
     .at(-1);
   const next = checkins.find((c) => c.status === "pending" && Date.parse(c.scheduled_for) > now);
   const wantsSelfie = plan?.mode === "selfie" || plan?.photo_prompt === "a selfie";
-  const who = isOrganizer ? "Your family" : (organizerName ?? "Your family");
+  const who = isOrganizer ? "Your circle" : (organizerName ?? "Your circle");
 
   async function respond(mode: CheckinMode, photoPath: string | null = null) {
     if (!open) return;
