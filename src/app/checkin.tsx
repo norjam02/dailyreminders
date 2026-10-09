@@ -31,7 +31,7 @@ function promptText(plan: CheckinPlan): string {
 }
 
 export default function CheckinScreen() {
-  const { session, current, isOrganizer } = useSession();
+  const { session, current, isOrganizer, signOut } = useSession();
   const circleId = current?.circle.id;
   const organizerId = current?.circle.organizer_id;
 
@@ -245,6 +245,7 @@ export default function CheckinScreen() {
           <Button label="Check-in settings" variant="secondary" onPress={() => router.push("/plan")} />
           <Button label="Invite someone" variant="secondary" onPress={() => router.push("/invite")} />
           <Button label="People" variant="secondary" onPress={() => router.push("/members")} />
+          <Button label="Sign out" variant="quiet" onPress={signOut} />
         </>
       ) : null}
 
