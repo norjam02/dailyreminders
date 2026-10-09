@@ -3,12 +3,13 @@
 
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, StyleSheet, View } from "react-native";
 
 import { Button, Chip, Chips, Choice, ErrorText, Field, Screen, Section, T } from "@/components/ui";
+import { space } from "@/lib/theme";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
-import { deviceTimeZone, HOUR_CHOICES, hourLabel, US_TIME_ZONES } from "@/lib/time";
+import { deviceTimeZone, HOUR_CHOICES, hourLabel, timeZoneLabel, US_TIME_ZONES } from "@/lib/time";
 import {
   MAX_REPLIES,
   REPLY_LENGTH,
@@ -61,6 +62,7 @@ export default function Plan() {
   // Each check-in can carry quick replies or a note from the organizer, not both.
   const [extra, setExtra] = useState<"none" | "replies" | "note">("none");
   const [ownReply, setOwnReply] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,10 +136,12 @@ export default function Plan() {
       return;
     }
     if (extra === "replies" && plan.quick_replies.length === 0) {
+      setMoreOpen(true);
       setError("Pick at least one quick reply, or choose Nothing extra.");
       return;
     }
     if (extra === "note" && !plan.personal_note?.trim()) {
+      setMoreOpen(true);
       setError("Write your note, or choose Nothing extra.");
       return;
     }
@@ -206,6 +210,29 @@ export default function Plan() {
         </Chips>
       </Section>
 
+      {/* The essentials stay up front; the rest has sensible defaults. */}
+      {moreOpen ? null : (
+        <View style={styles.summary}>
+          <T tone="muted">Time zone: {timeZoneLabel(plan.timezone)}</T>
+          <T tone="muted">Reminders: {FIRMNESS.find((f) => f.value === plan.firmness)?.label}</T>
+          <T tone="muted">
+            Wait before telling {isParent ? "your circle" : "you"}: {WAITS.find((w) => w.value === plan.wait_minutes)?.label}
+          </T>
+          <T tone="muted">
+            Added to each check-in:{" "}
+            {extra === "replies" ? "Quick replies" : extra === "note" ? "A note from you" : "Nothing extra"}
+          </T>
+        </View>
+      )}
+      <Button
+        label={moreOpen ? "Fewer options" : "More options"}
+        a11yLabel={moreOpen ? "Fewer options" : "More options: time zone, reminders, wait, and replies"}
+        variant="secondary"
+        onPress={() => setMoreOpen(!moreOpen)}
+      />
+
+      {moreOpen ? (
+        <>
       <Section title={isParent ? "Your time zone" : `${parentName}'s time zone`}>
         <Chips>
           {US_TIME_ZONES.map((z) => (
@@ -312,9 +339,15 @@ export default function Plan() {
           maxLength={120}
         />
       ) : null}
+        </>
+      ) : null}
 
       <ErrorText message={error} />
       <Button label="Save check-ins" onPress={save} busy={busy} />
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  summary: { gap: space.xs },
+});

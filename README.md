@@ -84,7 +84,7 @@ The schema is in `supabase/migrations/`. The functions the app calls are `create
 
 ### Subscriptions
 
-DailyPulse is free to download, sign up for, and set up: anyone can create a circle and choose check-in settings. A circle has to be on (paid, or on a pilot code) before the organizer can invite anyone, anyone can join or be approved, or the scheduler makes and sends check-ins. One subscription, paid by the organizer, covers the whole circle. Circles hold at most 10 people, counting everyone (the person who checks in, the organizer, and anyone waiting for approval):
+DailyPulse is free to download, sign up for, and set up: anyone can create a circle and choose check-in settings. A circle has to be on (paid, or on a pilot code) before the organizer can invite anyone, anyone can join or be approved, or the scheduler makes and sends check-ins. One subscription, paid by the organizer, covers one circle. Each account sets up one circle; someone who looks after two people sets up the second circle from a second account, with its own subscription. Circles hold at most 10 people, counting everyone (the person who checks in, the organizer, and anyone waiting for approval):
 
 | Plan | People | Price |
 | --- | --- | --- |
@@ -192,7 +192,7 @@ My Circle has **Delete my account** (required by the App Store). The `delete-acc
 | Welcome | Everyone | Set up check-ins, or join with a code |
 | Sign in | Organizer | Email address, then the six-digit code from the email |
 | Set up a circle | Organizer | Who the check-ins are for (yourself, or someone you care for) and your name |
-| Check-in settings | Organizer | Mode, photo prompt, up to three times, time zone, reminders, wait, quick replies, a personal note |
+| Check-in settings | Organizer | How and when up front (mode, photo prompt, up to three times); time zone, reminders, wait, and quick replies or a note under More options |
 | Invite someone | Organizer | From My Circle. Makes a join code and shares a message with a link to get the app (`EXPO_PUBLIC_DOWNLOAD_URL`) and the code |
 | Join with a code | Anyone | Name and code; signs in anonymously if needed |
 | Almost there | New members | Waits for approval and updates on its own |

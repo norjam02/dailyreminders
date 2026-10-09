@@ -490,6 +490,25 @@ describe("circles and joining", () => {
       storeCircle = await value(users.storeBuyer, "select public.create_circle('Pat', 'Robin', 'family')");
     });
 
+    test("each account sets up one circle", async () => {
+      await assert.rejects(
+        as(users.storeBuyer, "select public.create_circle('Second', 'Robin', 'family')"),
+        /already manage a circle/,
+      );
+    });
+
+    test("a subscription turns on only the first circle, even for older accounts with two", async () => {
+      const older = await db.query(
+        "insert into public.circles (name, organizer_id, created_at) values ('Older second', $1, now() + interval '1 minute') returning id",
+        [users.storeBuyer],
+      );
+      await apply(true, "apple", "yearly", later);
+      const on = (await db.query("select count(*)::int as n from public.circle_access where circle_id = $1", [older.rows[0].id])).rows[0].n;
+      assert.equal(on, 0);
+      await db.query("delete from public.circles where id = $1", [older.rows[0].id]);
+      await db.query("delete from public.circle_access where circle_id = $1", [storeCircle]);
+    });
+
     test("the app can't apply a store result itself", async () => {
       await assert.rejects(
         as(users.storeBuyer, "select public.apply_store_access($1, true, 'apple', 'yearly', now() + interval '1 year', 4)", [users.storeBuyer]),
