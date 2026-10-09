@@ -49,7 +49,11 @@ export default function SignIn() {
   if (!sentTo) {
     return (
       <Screen>
-        <T tone="muted">You&apos;re the person who sets up and pays for check-ins. We&apos;ll email you a code to sign in.</T>
+        <T tone="muted">
+          Let&apos;s get started setting up your own DailyPulse. It only takes a few minutes, and you can set it up for
+          yourself or for someone you care about. Enter your email and we&apos;ll send you a code to sign in. No
+          password needed.
+        </T>
         <Field
           label="Your email"
           value={email}
