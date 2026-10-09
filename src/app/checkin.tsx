@@ -25,8 +25,8 @@ function greeting(): string {
 
 function promptText(plan: CheckinPlan): string {
   if (plan.personal_note?.trim()) return plan.personal_note.trim();
+  if (plan.mode === "selfie" || (plan.mode === "photo" && plan.photo_prompt === "a selfie")) return "Send a quick selfie.";
   if (plan.mode === "photo") return `Send a photo: ${plan.photo_prompt ?? "anything you like"}.`;
-  if (plan.mode === "selfie") return "Send a quick selfie.";
   return "Tap the button to say hello.";
 }
 
@@ -97,6 +97,7 @@ export default function CheckinScreen() {
     .filter((c) => !lastDone || Date.parse(c.scheduled_for) > Date.parse(lastDone.scheduled_for))
     .at(-1);
   const next = checkins.find((c) => c.status === "pending" && Date.parse(c.scheduled_for) > now);
+  const wantsSelfie = plan?.mode === "selfie" || plan?.photo_prompt === "a selfie";
   const who = isOrganizer ? "Your family" : (organizerName ?? "Your family");
 
   async function respond(mode: CheckinMode, photoPath: string | null = null) {
@@ -129,7 +130,7 @@ export default function CheckinScreen() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
         quality: 0.5,
-        cameraType: mode === "selfie" ? ImagePicker.CameraType.front : ImagePicker.CameraType.back,
+        cameraType: wantsSelfie ? ImagePicker.CameraType.front : ImagePicker.CameraType.back,
       });
       if (result.canceled) return;
       const asset = result.assets[0];
@@ -187,7 +188,7 @@ export default function CheckinScreen() {
           ) : null}
 
           <BigButton
-            label={plan.mode === "photo" ? "Take a photo" : plan.mode === "selfie" ? "Take a selfie" : "Check in"}
+            label={plan.mode === "button" ? "Check in" : wantsSelfie ? "Take a selfie" : "Take a photo"}
             busy={busy === "checkin"}
             onPress={() => checkIn(plan.mode)}
           />

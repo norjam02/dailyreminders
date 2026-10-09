@@ -10,12 +10,12 @@ import { supabase } from "@/lib/supabase";
 import { deviceTimeZone, HOUR_CHOICES, hourLabel, US_TIME_ZONES } from "@/lib/time";
 import { STARTER_REPLIES, type CheckinMode, type CheckinPlan, type ReminderFirmness } from "@/lib/types";
 
-const PHOTO_PROMPTS = ["breakfast", "the view from your window", "your coffee cup", "anything you like"];
+// "a selfie" opens the front camera on the check-in screen.
+const PHOTO_PROMPTS = ["breakfast", "a selfie", "the view from your window", "your coffee cup", "anything you like"];
 
 const MODES: { mode: CheckinMode; label: string; description: string }[] = [
   { mode: "button", label: "Tap a button", description: "Simplest. Good for anyone who dislikes cameras." },
-  { mode: "photo", label: "Send a photo", description: "Of something you pick, like breakfast." },
-  { mode: "selfie", label: "Send a selfie", description: "For a parent who likes to be seen." },
+  { mode: "photo", label: "Send a photo", description: "Of something you pick, like breakfast or a selfie." },
 ];
 
 const FIRMNESS: { value: ReminderFirmness; label: string; description: string }[] = [
@@ -68,7 +68,9 @@ export default function Plan() {
           if (loadError) return setError(errorMessage(loadError));
           if (data) {
             const loaded = data as CheckinPlan;
-            setPlan({ ...loaded, times: loaded.times.map((t) => t.slice(0, 5)) });
+            // Selfie used to be its own mode; it's now a photo of "a selfie".
+            const asPhoto = loaded.mode === "selfie" ? { mode: "photo" as const, photo_prompt: "a selfie" } : {};
+            setPlan({ ...loaded, ...asPhoto, times: loaded.times.map((t) => t.slice(0, 5)) });
             setExists(true);
           } else {
             setPlan(defaults(circleId));
