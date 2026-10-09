@@ -141,10 +141,10 @@ export default function Home() {
         <View style={styles.actions}>
           <Button label="Invite someone" variant="secondary" onPress={() => router.push("/invite")} />
           <Button label="Check-in settings" variant="secondary" onPress={() => router.push("/plan")} />
-          <Button label="People" variant="secondary" onPress={() => router.push("/members")} />
+          <Button label="My Circle" variant="secondary" onPress={() => router.push("/members")} />
         </View>
       ) : (
-        <Button label="People" variant="secondary" onPress={() => router.push("/members")} />
+        <Button label="My Circle" variant="secondary" onPress={() => router.push("/members")} />
       )}
       <Button label="Sign out" variant="quiet" onPress={signOut} />
     </Screen>

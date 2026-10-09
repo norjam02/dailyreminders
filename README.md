@@ -138,9 +138,9 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
 | Invite someone | Organizer | Makes a join code and shares it |
 | Join with a code | Anyone | Name and code; signs in anonymously if needed |
 | Almost there | New members | Waits for approval and updates on its own |
-| Check-in | Parent | One big button, photo, or selfie; quick replies; Later; "In an emergency, call 911". A parent who organizes also gets settings, invites, and people here. |
+| Check-in | Parent | One big button, photo, or selfie; quick replies; Later; "In an emergency, call 911". A parent who organizes also gets settings, invites, and My Circle here. |
 | Home | Organizer and family | Recent check-ins with photos and replies, what's next, people waiting to join |
-| People | Everyone | The circle's members; the organizer approves and removes, others can leave |
+| My Circle | Everyone | The circle's members; the organizer approves and removes, others can leave |
 
 Design: Atkinson Hyperlegible (made for readers with low vision), large type, 56-point touch targets, calm blue for actions, green for checked in, and amber rather than red for a missed check-in. Light mode only for the pilot.
 

@@ -16,13 +16,6 @@ import type { Checkin, CheckinMode, CheckinPlan } from "@/lib/types";
 
 const HOUR = 3_600_000;
 
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 function promptText(plan: CheckinPlan): string {
   if (plan.personal_note?.trim()) return plan.personal_note.trim();
   if (plan.mode === "selfie" || (plan.mode === "photo" && plan.photo_prompt === "a selfie")) return "Send a quick selfie.";
@@ -165,8 +158,7 @@ export default function CheckinScreen() {
   return (
     <Screen topInset onRefresh={() => load()} refreshing={false}>
       <T variant="display">
-        {greeting()}
-        {myName ? `, ${myName}` : ""}
+        {myName ? `Hi, ${myName}` : "Hi there"}
       </T>
 
       {open && plan ? (
@@ -244,7 +236,7 @@ export default function CheckinScreen() {
           <Gap size="lg" />
           <Button label="Check-in settings" variant="secondary" onPress={() => router.push("/plan")} />
           <Button label="Invite someone" variant="secondary" onPress={() => router.push("/invite")} />
-          <Button label="People" variant="secondary" onPress={() => router.push("/members")} />
+          <Button label="My Circle" variant="secondary" onPress={() => router.push("/members")} />
           <Button label="Sign out" variant="quiet" onPress={signOut} />
         </>
       ) : null}

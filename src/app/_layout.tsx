@@ -61,7 +61,7 @@ function Navigator() {
         <Stack.Screen name="setup" options={{ title: "Set up a circle" }} />
         <Stack.Screen name="plan" options={{ title: "Check-in settings" }} />
         <Stack.Screen name="invite" options={{ title: "Invite someone" }} />
-        <Stack.Screen name="members" options={{ title: "People" }} />
+        <Stack.Screen name="members" options={{ title: "My Circle" }} />
       </Stack>
     </>
   );

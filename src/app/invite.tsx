@@ -93,7 +93,7 @@ export default function Invite() {
             setCopied(true);
           }}
         />
-        <T tone="muted">You&apos;ll approve them once they join. Find them under People.</T>
+        <T tone="muted">You&apos;ll approve them once they join. Find them under My Circle.</T>
         <Button label="Make another code" variant="quiet" onPress={() => setCode(null)} />
       </Screen>
     );
