@@ -40,7 +40,7 @@ function defaults(circleId: string): CheckinPlan {
     timezone: US_TIME_ZONES.some((z) => z.zone === zone) ? zone : "America/Chicago",
     firmness: "normal",
     wait_minutes: 60,
-    quick_replies: [...STARTER_REPLIES],
+    quick_replies: [],
     personal_note: null,
   };
 }
@@ -53,6 +53,8 @@ export default function Plan() {
 
   const [plan, setPlan] = useState<CheckinPlan | null>(null);
   const [exists, setExists] = useState(false);
+  // Each check-in can carry quick replies or a note from the organizer, not both.
+  const [extra, setExtra] = useState<"none" | "replies" | "note">("none");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,9 +73,11 @@ export default function Plan() {
             // Selfie used to be its own mode; it's now a photo of "a selfie".
             const asPhoto = loaded.mode === "selfie" ? { mode: "photo" as const, photo_prompt: "a selfie" } : {};
             setPlan({ ...loaded, ...asPhoto, times: loaded.times.map((t) => t.slice(0, 5)) });
+            setExtra(loaded.personal_note?.trim() ? "note" : loaded.quick_replies.length > 0 ? "replies" : "none");
             setExists(true);
           } else {
             setPlan(defaults(circleId));
+            setExtra("none");
             setExists(false);
           }
         });
@@ -112,6 +116,14 @@ export default function Plan() {
       setError("Pick at least one check-in time.");
       return;
     }
+    if (extra === "replies" && plan.quick_replies.length === 0) {
+      setError("Pick at least one quick reply, or choose Nothing extra.");
+      return;
+    }
+    if (extra === "note" && !plan.personal_note?.trim()) {
+      setError("Write your note, or choose Nothing extra.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const fields = {
@@ -121,8 +133,8 @@ export default function Plan() {
       timezone: plan.timezone,
       firmness: plan.firmness,
       wait_minutes: plan.wait_minutes,
-      quick_replies: plan.quick_replies,
-      personal_note: plan.personal_note?.trim() || null,
+      quick_replies: extra === "replies" ? plan.quick_replies : [],
+      personal_note: extra === "note" ? plan.personal_note?.trim() || null : null,
     };
     const { error: saveError } = exists
       ? await supabase.from("checkin_plans").update(fields).eq("circle_id", circleId)
@@ -213,23 +225,43 @@ export default function Plan() {
         </Chips>
       </Section>
 
-      <Section title="Quick replies" hint={`${isParent ? "You" : parentName} can add one of these when checking in.`}>
-        <Chips>
-          {STARTER_REPLIES.map((r) => (
-            <Chip key={r} label={r} selected={plan.quick_replies.includes(r)} onPress={() => toggleReply(r)} />
-          ))}
-        </Chips>
+      <Section title="Add to each check-in" hint="Pick one, or keep it simple.">
+        <Choice label="Nothing extra" selected={extra === "none"} onPress={() => setExtra("none")} />
+        <Choice
+          label="Quick replies"
+          description={`${isParent ? "You" : parentName} can tap one to send back, like "Love you!"`}
+          selected={extra === "replies"}
+          onPress={() => setExtra("replies")}
+        />
+        {!isParent ? (
+          <Choice
+            label="A note from you"
+            description={`${parentName} sees it when it's time to check in.`}
+            selected={extra === "note"}
+            onPress={() => setExtra("note")}
+          />
+        ) : null}
       </Section>
 
-      <Section title="A note from you" hint="Optional. Shown with each check-in instead of the standard words.">
+      {extra === "replies" ? (
+        <Section title="Quick replies" hint="Pick up to four.">
+          <Chips>
+            {STARTER_REPLIES.map((r) => (
+              <Chip key={r} label={r} selected={plan.quick_replies.includes(r)} onPress={() => toggleReply(r)} />
+            ))}
+          </Chips>
+        </Section>
+      ) : null}
+
+      {extra === "note" ? (
         <Field
-          label="Note"
+          label="Your note"
           placeholder="Morning, Mom. Coffee time?"
           value={plan.personal_note ?? ""}
           onChangeText={(v) => update({ personal_note: v })}
           maxLength={120}
         />
-      </Section>
+      ) : null}
 
       <ErrorText message={error} />
       <Button label="Save check-ins" onPress={save} busy={busy} />
