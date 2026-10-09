@@ -25,6 +25,11 @@ const users = {
   payer: "00000000-0000-4000-8000-000000000011",
   joiner: "00000000-0000-4000-8000-000000000012",
   storeBuyer: "00000000-0000-4000-8000-000000000013",
+  sizeOrganizer: "00000000-0000-4000-8000-000000000014",
+  member1: "00000000-0000-4000-8000-000000000015",
+  member2: "00000000-0000-4000-8000-000000000016",
+  member3: "00000000-0000-4000-8000-000000000017",
+  member4: "00000000-0000-4000-8000-000000000018",
 };
 
 let db;
@@ -467,8 +472,8 @@ describe("circles and joining", () => {
     let storeCircle;
     const later = new Date(Date.now() + 30 * 86_400_000).toISOString();
     const past = new Date(Date.now() - 60_000).toISOString();
-    const apply = (active, source, plan, until) =>
-      db.query("select public.apply_store_access($1, $2, $3, $4, $5)", [users.storeBuyer, active, source, plan, until]);
+    const apply = (active, source, plan, until, max = 4) =>
+      db.query("select public.apply_store_access($1, $2, $3, $4, $5, $6)", [users.storeBuyer, active, source, plan, until, max]);
     const access = async () =>
       (await db.query("select source, plan, active_until > now() as on from public.circle_access where circle_id = $1", [storeCircle])).rows[0];
 
@@ -478,7 +483,7 @@ describe("circles and joining", () => {
 
     test("the app can't apply a store result itself", async () => {
       await assert.rejects(
-        as(users.storeBuyer, "select public.apply_store_access($1, true, 'apple', 'yearly', now() + interval '1 year')", [users.storeBuyer]),
+        as(users.storeBuyer, "select public.apply_store_access($1, true, 'apple', 'yearly', now() + interval '1 year', 4)", [users.storeBuyer]),
         /permission denied/,
       );
     });
@@ -503,6 +508,56 @@ describe("circles and joining", () => {
       await db.query("update public.circle_access set active_until = $2 where circle_id = $1", [storeCircle, past]);
       await apply(true, "google", "monthly", later);
       assert.deepEqual(await access(), { source: "google", plan: "monthly", on: true });
+    });
+  });
+
+  describe("circle sizes", () => {
+    let sized;
+    const join = async (uid, name) => {
+      const code = await value(users.sizeOrganizer, "select public.create_invite($1, 'family')", [sized]);
+      await as(uid, "select public.redeem_invite($1, $2)", [code, name]);
+      return code;
+    };
+
+    before(async () => {
+      sized = await value(users.sizeOrganizer, "select public.create_circle('Avery', 'Jo', 'family')");
+      await activate(sized);
+    });
+
+    test("a standard circle holds 4 people, counting people waiting", async () => {
+      await join(users.member1, "One");
+      await join(users.member2, "Two");
+      await join(users.member3, "Three");
+      assert.equal(await value(users.sizeOrganizer, "select public.circle_member_count($1)", [sized]), 4);
+      await assert.rejects(
+        as(users.sizeOrganizer, "select public.create_invite($1, 'family')", [sized]),
+        /Your circle is full/,
+      );
+    });
+
+    test("a code made before the circle filled can't squeeze someone in", async () => {
+      await db.query("update public.circle_access set max_members = 5 where circle_id = $1", [sized]);
+      const code = await value(users.sizeOrganizer, "select public.create_invite($1, 'family')", [sized]);
+      await db.query("update public.circle_access set max_members = 4 where circle_id = $1", [sized]);
+      await assert.rejects(as(users.member4, "select public.redeem_invite($1, 'Four')", [code]), /This circle is full/);
+    });
+
+    test("a Plus plan raises the limit to 10, and no plan goes higher", async () => {
+      await db.query("update public.circle_access set max_members = 10 where circle_id = $1", [sized]);
+      await join(users.member4, "Four");
+      assert.equal(await value(users.sizeOrganizer, "select public.circle_member_count($1)", [sized]), 5);
+      await assert.rejects(db.query("update public.circle_access set max_members = 11 where circle_id = $1", [sized]), /check/);
+    });
+
+    test("approving stops at the limit", async () => {
+      await db.query("update public.circle_access set max_members = 4 where circle_id = $1", [sized]);
+      for (const uid of [users.member1, users.member2, users.member3]) {
+        await as(users.sizeOrganizer, "select public.approve_member($1, $2)", [sized, uid]);
+      }
+      await assert.rejects(
+        as(users.sizeOrganizer, "select public.approve_member($1, $2)", [sized, users.member4]),
+        /Your circle is full/,
+      );
     });
   });
 

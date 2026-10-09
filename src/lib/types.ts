@@ -7,7 +7,7 @@ export type CheckinMode = "button" | "photo" | "selfie";
 export type ReminderFirmness = "gentle" | "normal" | "persistent";
 export type CheckinStatus = "pending" | "done" | "missed";
 
-export type CircleAccess = { active_until: string | null };
+export type CircleAccess = { active_until: string | null; max_members: number };
 
 export type Circle = {
   id: string;

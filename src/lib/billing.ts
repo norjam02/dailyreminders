@@ -7,10 +7,13 @@
 // paid itself.
 //
 // RevenueCat setup this code expects:
-//   - Entitlement "circle"
-//   - Products dailypulse_monthly ($4.99) and dailypulse_yearly ($49),
-//     both attached to "circle"
-//   - A current offering with the Monthly and Annual packages
+//   - Entitlement "circle", with all four products attached
+//   - Standard (up to 4 people): dailypulse_monthly ($4.99), dailypulse_yearly ($49)
+//   - Plus (up to 10 people): dailypulse_plus_monthly ($9.99), dailypulse_plus_yearly ($99)
+//   - All four in one subscription group (Apple) so moving between them is an
+//     upgrade or downgrade, not a second subscription
+//   - The current offering holds the standard Monthly and Annual packages; an
+//     offering named "plus" holds the Plus ones
 //
 // In Expo Go, RevenueCat runs in a preview mode with no real purchases. Real
 // purchases need a development or store build.
@@ -20,14 +23,22 @@ import Purchases, { type PurchasesPackage } from "react-native-purchases";
 
 import { supabase } from "./supabase";
 
-export type PlanId = "yearly" | "monthly";
+export type Size = "standard" | "plus";
+export type Billing = "yearly" | "monthly";
 
-export type Plan = { id: PlanId; label: string; price: string; description: string };
+export const SIZES: { id: Size; label: string; people: number }[] = [
+  { id: "standard", label: "Up to 4 people", people: 4 },
+  { id: "plus", label: "Up to 10 people", people: 10 },
+];
+
+export type Price = { size: Size; billing: Billing; price: string; description: string };
 
 // Shown until the store's own prices load (they're localized and may differ).
-export const DEFAULT_PLANS: Plan[] = [
-  { id: "yearly", label: "Yearly", price: "$49 a year", description: "About $4.08 a month. Save 18%." },
-  { id: "monthly", label: "Monthly", price: "$4.99 a month", description: "Cancel anytime." },
+export const DEFAULT_PRICES: Price[] = [
+  { size: "standard", billing: "yearly", price: "$49 a year", description: "About $4.08 a month. Save 18%." },
+  { size: "standard", billing: "monthly", price: "$4.99 a month", description: "Cancel anytime." },
+  { size: "plus", billing: "yearly", price: "$99 a year", description: "About $8.25 a month. Save 17%." },
+  { size: "plus", billing: "monthly", price: "$9.99 a month", description: "Cancel anytime." },
 ];
 
 const API_KEY = Platform.select({
@@ -53,25 +64,32 @@ function ensureConfigured(userId: string): boolean {
   return true;
 }
 
-async function packages(): Promise<Partial<Record<PlanId, PurchasesPackage>>> {
+async function findPackage(size: Size, billing: Billing): Promise<PurchasesPackage | undefined> {
   const offerings = await Purchases.getOfferings();
-  const current = offerings.current;
-  return { yearly: current?.annual ?? undefined, monthly: current?.monthly ?? undefined };
+  const offering = size === "plus" ? offerings.all.plus : offerings.current;
+  return (billing === "yearly" ? offering?.annual : offering?.monthly) ?? undefined;
 }
 
-// The plans with the store's own prices, when the store is reachable.
-export async function loadPlans(userId: string): Promise<Plan[]> {
-  if (!ensureConfigured(userId)) return DEFAULT_PLANS;
+// The prices from the store, when it's reachable.
+export async function loadPrices(userId: string): Promise<Price[]> {
+  if (!ensureConfigured(userId)) return DEFAULT_PRICES;
   try {
-    const pkgs = await packages();
-    return DEFAULT_PLANS.map((p) => {
-      const product = pkgs[p.id]?.product;
-      if (!product) return p;
-      return { ...p, price: p.id === "yearly" ? `${product.priceString} a year` : `${product.priceString} a month` };
-    });
+    return await Promise.all(
+      DEFAULT_PRICES.map(async (p) => {
+        const product = (await findPackage(p.size, p.billing))?.product;
+        if (!product) return p;
+        return { ...p, price: `${product.priceString} a ${p.billing === "yearly" ? "year" : "month"}` };
+      }),
+    );
   } catch {
-    return DEFAULT_PLANS;
+    return DEFAULT_PRICES;
   }
+}
+
+// The product the organizer pays for now, if any (for upgrades on Android).
+async function currentProduct(): Promise<string | null> {
+  const info = await Purchases.getCustomerInfo().catch(() => null);
+  return info?.entitlements.active.circle?.productIdentifier ?? null;
 }
 
 export type PurchaseResult = { ok: true } | { ok: false; cancelled?: boolean; message: string };
@@ -84,14 +102,18 @@ async function syncWithServer(): Promise<boolean> {
   return !!(data as { active?: boolean } | null)?.active;
 }
 
-export async function startPurchase(plan: PlanId, userId: string): Promise<PurchaseResult> {
+export async function startPurchase(size: Size, billing: Billing, userId: string): Promise<PurchaseResult> {
   if (!ensureConfigured(userId)) {
     return { ok: false, message: "Subscriptions open soon. If you're in the pilot, enter your pilot code below." };
   }
   try {
-    const pkg = (await packages())[plan];
+    const pkg = await findPackage(size, billing);
     if (!pkg) return { ok: false, message: `Couldn't load plans from the ${STORE_NAME}. Try again in a moment.` };
-    await Purchases.purchasePackage(pkg);
+    // Apple moves an existing subscription within its group on its own;
+    // Google needs to be told which subscription is being replaced.
+    const old = Platform.OS === "android" ? await currentProduct() : null;
+    const change = old && old !== pkg.product.identifier ? { oldProductIdentifier: old.split(":")[0] } : null;
+    await Purchases.purchasePackage(pkg, null, change);
   } catch (e) {
     const err = e as { code?: string; userCancelled?: boolean; message?: string };
     if (err.userCancelled || err.code === Purchases.PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {

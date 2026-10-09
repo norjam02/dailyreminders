@@ -12,7 +12,7 @@ import { space } from "@/lib/theme";
 import type { Member } from "@/lib/types";
 
 export default function Members() {
-  const { session, current, isOrganizer, refresh } = useSession();
+  const { session, current, isOrganizer, memberLimit, refresh } = useSession();
   const circleId = current?.circle.id;
   const organizerId = current?.circle.organizer_id;
 
@@ -102,6 +102,11 @@ export default function Members() {
 
       <View style={styles.group}>
         <T variant="title">In the circle</T>
+        {memberLimit > 0 ? (
+          <T tone="muted">
+            {active.length + waiting.length} of {memberLimit} people
+          </T>
+        ) : null}
         {active.map((m) => {
           const isMe = m.user_id === session?.user.id;
           const isOrg = m.user_id === organizerId;

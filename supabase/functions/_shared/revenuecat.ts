@@ -48,6 +48,9 @@ export async function syncUser(userId: string): Promise<boolean> {
   const sub: Subscription | undefined = subscriber?.subscriptions?.[product];
   const source = sub?.store === "play_store" ? "google" : "apple";
   const plan = /year|annual/i.test(product) ? "yearly" : "monthly";
+  // Plus products (dailypulse_plus_monthly, dailypulse_plus_yearly) allow up
+  // to 10 people; standard ones up to 4.
+  const maxMembers = /plus/i.test(product) ? 10 : 4;
 
   const { error } = await admin.rpc("apply_store_access", {
     p_user: userId,
@@ -55,6 +58,7 @@ export async function syncUser(userId: string): Promise<boolean> {
     p_source: active ? source : null,
     p_plan: active ? plan : null,
     p_until: active ? until : null,
+    p_max_members: maxMembers,
   });
   if (error) throw error;
   return active;

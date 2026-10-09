@@ -16,6 +16,8 @@ type SessionState = {
   isOrganizer: boolean;
   // Paid or on a pilot code. Unpaid circles can be set up but not shared.
   isActive: boolean;
+  // How many people the circle may hold (0 when it isn't on).
+  memberLimit: number;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -34,7 +36,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     const { data, error } = await supabase
       .from("circle_members")
-      .select("circle_id, role, status, circle:circles(id, name, organizer_id, access:circle_access(active_until))")
+      .select("circle_id, role, status, circle:circles(id, name, organizer_id, access:circle_access(active_until, max_members))")
       .eq("user_id", s.user.id)
       .neq("status", "removed")
       .order("joined_at", { ascending: true });
@@ -89,7 +91,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const current = memberships.find((m) => m.status === "active") ?? memberships[0] ?? null;
     const isOrganizer = !!current && !!session && current.circle.organizer_id === session.user.id;
     const isActive = !!current && circleIsActive(current.circle);
-    return { session, loading, memberships, current, isOrganizer, isActive, refresh, signOut };
+    const access = current ? (Array.isArray(current.circle.access) ? current.circle.access[0] : current.circle.access) : null;
+    const memberLimit = isActive ? (access?.max_members ?? 4) : 0;
+    return { session, loading, memberships, current, isOrganizer, isActive, memberLimit, refresh, signOut };
   }, [session, loading, memberships, refresh, signOut]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

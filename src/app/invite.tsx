@@ -12,11 +12,12 @@ import { colors, fonts } from "@/lib/theme";
 import type { MemberRole } from "@/lib/types";
 
 export default function Invite() {
-  const { current, isOrganizer, isActive } = useSession();
+  const { current, isOrganizer, isActive, memberLimit } = useSession();
   const circleId = current?.circle.id;
   const parentName = current?.circle.name ?? "them";
 
   const [hasParent, setHasParent] = useState(true);
+  const [count, setCount] = useState(0);
   const [role, setRole] = useState<MemberRole | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -28,12 +29,13 @@ export default function Invite() {
       if (!circleId) return;
       supabase
         .from("circle_members")
-        .select("user_id")
+        .select("user_id, role")
         .eq("circle_id", circleId)
-        .eq("role", "parent")
         .neq("status", "removed")
         .then(({ data }) => {
-          const present = (data ?? []).length > 0;
+          const people = data ?? [];
+          setCount(people.length);
+          const present = people.some((p) => p.role === "parent");
           setHasParent(present);
           setRole((r) => r ?? (present ? "family" : "parent"));
         });
@@ -54,6 +56,23 @@ export default function Invite() {
         <T variant="heading">Subscribe to invite people</T>
         <T tone="muted">Your settings are saved. Inviting caregivers, support workers, family, and friends starts once your circle is on.</T>
         <Button label="See plans" onPress={() => router.replace("/subscribe")} />
+      </Screen>
+    );
+  }
+
+  if (count >= memberLimit && !code) {
+    return (
+      <Screen>
+        <T variant="heading">Your circle is full</T>
+        <T tone="muted">
+          It has {count} of {memberLimit} people, counting anyone waiting to be approved.
+        </T>
+        {memberLimit < 10 ? (
+          <Button label="Make room for up to 10" onPress={() => router.push("/subscribe?upgrade=1")} />
+        ) : (
+          <T>Circles hold up to 10 people. Remove someone in My Circle to make room.</T>
+        )}
+        <Button label="My Circle" variant="secondary" onPress={() => router.replace("/members")} />
       </Screen>
     );
   }

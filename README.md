@@ -84,15 +84,22 @@ The schema is in `supabase/migrations/`. The functions the app calls are `create
 
 ### Subscriptions
 
-DailyPulse is free to download, sign up for, and set up: anyone can create a circle and choose check-in settings. A circle has to be on (paid, or on a pilot code) before the organizer can invite anyone, anyone can join or be approved, or the scheduler makes and sends check-ins. One subscription, paid by the organizer, covers the whole circle: $4.99 a month or $49 a year.
+DailyPulse is free to download, sign up for, and set up: anyone can create a circle and choose check-in settings. A circle has to be on (paid, or on a pilot code) before the organizer can invite anyone, anyone can join or be approved, or the scheduler makes and sends check-ins. One subscription, paid by the organizer, covers the whole circle. Circles hold at most 10 people, counting everyone (the person who checks in, the organizer, and anyone waiting for approval):
+
+| Plan | People | Price |
+| --- | --- | --- |
+| Standard | Up to 4 | $4.99 a month or $49 a year |
+| Plus | Up to 10 | $9.99 a month or $99 a year |
+
+When a circle is full, inviting, joining, and approving stop, and the organizer is offered the upgrade. Nobody is removed if a circle moves to a smaller plan.
 
 The rule lives in the database (`circle_access` and `circle_is_active`), so the app can't get around it. Only the server writes `circle_access`.
 
 - **Pilot codes** (`access_codes`) turn a circle on for a set number of days. The organizer enters one on the Subscribe screen. Make one in the SQL Editor:
 
   ```sql
-  insert into public.access_codes (code, days, uses_left, expires_at, note)
-  values ('PILOT2026', 30, 20, '2026-12-31', 'November pilot');
+  insert into public.access_codes (code, days, uses_left, expires_at, max_members, note)
+  values ('PILOT2026', 30, 20, '2026-12-31', 4, 'November pilot');
   ```
 
 - **Turning a circle on by hand:** `insert into public.circle_access (circle_id, source) values ('<circle id>', 'manual');`
@@ -110,8 +117,8 @@ A store result never cuts short a pilot code that's still running.
 
 1. **Developer accounts:** Apple Developer Program ($99 a year) and Google Play Console ($25 once), both in the business's name. Accept the paid apps agreements and add tax and bank details in each.
 2. **App records:** create DailyPulse in App Store Connect and Play Console, with the bundle id / package name we choose.
-3. **Products,** in both stores, in one subscription group: `dailypulse_monthly` at $4.99 a month and `dailypulse_yearly` at $49 a year.
-4. **RevenueCat:** create a project with an Apple app and a Google app (connect each store's credentials), add entitlement `circle` with both products, and make the current offering with the Monthly and Annual packages.
+3. **Products,** in both stores, in one subscription group: `dailypulse_monthly` ($4.99 a month), `dailypulse_yearly` ($49 a year), `dailypulse_plus_monthly` ($9.99 a month), and `dailypulse_plus_yearly` ($99 a year). Product ids containing "plus" allow 10 people.
+4. **RevenueCat:** create a project with an Apple app and a Google app (connect each store's credentials), add entitlement `circle` with all four products, make the current offering with the standard Monthly and Annual packages, and add an offering named `plus` with the Plus ones.
 5. **Keys:**
    - In `.env.local`: `EXPO_PUBLIC_REVENUECAT_APPLE_KEY` and `EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY` (RevenueCat's public SDK keys).
    - In Supabase, Edge Functions secrets: `REVENUECAT_SECRET_KEY` (a RevenueCat secret API key) and `REVENUECAT_WEBHOOK_AUTH` (any long random string).
