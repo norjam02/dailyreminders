@@ -86,6 +86,8 @@ def build(site: Path) -> None:
             tabs=tabs,
             body="\n".join("    " + line if line else "" for line in body.splitlines()),
         )
+        # Google Play links to this section for account deletion.
+        page = page.replace("<h2>Delete your account</h2>", '<h2 id="delete">Delete your account</h2>')
         (out / f"{slug}.html").write_text(page)
         print(f"wrote {out / (slug + '.html')}")
 
