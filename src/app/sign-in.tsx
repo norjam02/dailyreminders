@@ -1,4 +1,8 @@
 // Organizers sign in with a code emailed to them. No password.
+//
+// One exception: App Store and Google Play reviewers can't read our emails,
+// so the review account (EXPO_PUBLIC_REVIEW_EMAIL) signs in with a password
+// set in the Supabase dashboard. Everyone else only ever sees the code.
 
 import { router } from "expo-router";
 import { useState } from "react";
@@ -7,11 +11,14 @@ import { Button, ErrorText, Field, Screen, T } from "@/components/ui";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 
+const REVIEW_EMAIL = process.env.EXPO_PUBLIC_REVIEW_EMAIL?.trim().toLowerCase() || null;
+
 export default function SignIn() {
   const { refresh } = useSession();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,8 +28,12 @@ export default function SignIn() {
       setError("Enter an email address, like name@example.com.");
       return;
     }
-    setBusy(true);
     setError(null);
+    if (REVIEW_EMAIL && address === REVIEW_EMAIL) {
+      setSentTo(address);
+      return;
+    }
+    setBusy(true);
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email: address,
       options: { shouldCreateUser: true },
@@ -40,6 +51,20 @@ export default function SignIn() {
     if (verifyError) {
       setBusy(false);
       return setError("That code didn't work. Check the latest email, or send a new code.");
+    }
+    await refresh();
+    setBusy(false);
+    router.replace("/");
+  }
+
+  async function signInForReview() {
+    if (!sentTo) return;
+    setBusy(true);
+    setError(null);
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: sentTo, password });
+    if (signInError) {
+      setBusy(false);
+      return setError("That password didn't work.");
     }
     await refresh();
     setBusy(false);
@@ -67,6 +92,27 @@ export default function SignIn() {
         />
         <ErrorText message={error} />
         <Button label="Email me a code" onPress={sendCode} busy={busy} />
+      </Screen>
+    );
+  }
+
+  if (REVIEW_EMAIL && sentTo === REVIEW_EMAIL) {
+    return (
+      <Screen>
+        <Field
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete="current-password"
+          textContentType="password"
+          returnKeyType="done"
+          onSubmitEditing={signInForReview}
+        />
+        <ErrorText message={error} />
+        <Button label="Sign in" onPress={signInForReview} busy={busy} disabled={!password} />
+        <Button label="Use a different email" variant="quiet" onPress={() => setSentTo(null)} disabled={busy} />
       </Screen>
     );
   }
