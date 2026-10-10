@@ -8,9 +8,15 @@
     "scheme": "dailypulse",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "com.condorllc.dailypulse",
+      "supportsTablet": false,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.condorllc.dailypulse",
       "adaptiveIcon": {
         "backgroundColor": "#EEF3F6",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
