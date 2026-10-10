@@ -424,3 +424,6 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = false
+
+[functions.subscription-notices]
+verify_jwt = false

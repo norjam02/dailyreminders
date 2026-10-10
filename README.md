@@ -180,6 +180,14 @@ Notifications wait in an outbox table and go to Expo's push service in batches o
 
 My Circle has **Delete my account** (required by the App Store). The `delete-account` function removes the sign-in account, the person's profile, memberships, and push tokens; any circle they set up, for everyone in it; and check-in photos in circles where they're the person checking in. It can't cancel a store subscription, so the app tells organizers to cancel in the App Store or Google Play.
 
+### Subscription emails
+
+The Terms promise organizers an email once a year, and 7 to 30 days before any price change, saying what they pay, how often, and how to cancel. The `subscription-notices` function sends them through Google Workspace (smtp.gmail.com, port 465) and records each one in `subscription_notices` so nobody gets a copy twice.
+
+- **Yearly:** pg_cron calls the function every day at 15:00 UTC. Yearly plans hear 7 to 30 days before they renew; monthly plans after about a year, then every year. Subscriptions set to end aren't emailed.
+- **Price change:** call it by hand once the new price is set in both stores (example in the function's header). Calls are dry runs unless they say `"dryRun": false`, so look at the list first.
+- **Setup:** function secrets `NOTICES_SECRET`, `REVENUECAT_SECRET_KEY`, `SMTP_USER`, `SMTP_PASS` (a Google app password), optional `MAIL_FROM`; and two Vault secrets, `project_url` and `notices_secret` (same value as `NOTICES_SECRET`). Until `notices_secret` is in the Vault, the daily job does nothing.
+
 ### Still to build
 
 - Checking Expo's delivery receipts and removing tokens for uninstalled apps.
