@@ -52,7 +52,7 @@ These are starting guesses to test, not findings.
 ### Ground rules
 
 - The app is not an emergency or medical service, and says so plainly.
-- Photos and selfies are used only for the pilot and deleted at the end.
+- Photos and selfies are seen only by the circle. Records are kept until someone deletes their account; nothing is deleted on a schedule.
 - Either person can stop at any time.
 
 ## Backend
