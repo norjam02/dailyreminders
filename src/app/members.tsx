@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 
 import { Button, Card, ErrorText, Screen, T } from "@/components/ui";
+import { openManageSubscription, PURCHASES_AVAILABLE } from "@/lib/billing";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { space } from "@/lib/theme";
@@ -95,6 +96,9 @@ export default function Members() {
         : "This deletes your account and removes you from the circle. It can't be undone.",
       [
         { text: "Cancel", style: "cancel" },
+        ...(isOrganizer && PURCHASES_AVAILABLE && session
+          ? [{ text: "Cancel my subscription first", onPress: () => openManageSubscription(session.user.id) }]
+          : []),
         {
           text: "Delete",
           style: "destructive",
