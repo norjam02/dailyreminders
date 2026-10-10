@@ -47,7 +47,10 @@ type Circle = {
   source: Store;
   plan: string | null;
   max_members: number;
+  active_until: string | null;
 };
+
+const DAY = 86_400_000;
 
 async function subscriber(userId: string): Promise<unknown> {
   const key = Deno.env.get("REVENUECAT_SECRET_KEY");
@@ -77,10 +80,10 @@ async function organizerEmail(userId: string): Promise<string | null> {
   return data?.user?.email ?? null;
 }
 
-async function circleName(circleId: string): Promise<string> {
+async function circleName(circleId: string): Promise<string | null> {
   // The circle is named after the person who checks in.
   const { data } = await admin.from("circles").select("name").eq("id", circleId).single();
-  return data?.name ?? "your";
+  return data?.name ?? null;
 }
 
 type Planned = { circleId: string; organizerId: string; to: string; noticeKey: string; email: Email };
@@ -88,7 +91,16 @@ type Planned = { circleId: string; organizerId: string; to: string; noticeKey: s
 async function planAnnual(circles: Circle[], now: number): Promise<{ planned: Planned[]; skipped: string[] }> {
   const planned: Planned[] = [];
   const skipped: string[] = [];
+  // One a day per circle, keyed by date, so a second run the same day can't
+  // send twice.
+  const noticeKey = new Date(now).toISOString().slice(0, 10);
   for (const c of circles) {
+    // A yearly plan's paid-through date is its renewal date, so skip asking
+    // RevenueCat about ones nowhere near renewing.
+    if (c.plan === "yearly" && c.active_until) {
+      const daysLeft = (Date.parse(c.active_until) - now) / DAY;
+      if (daysLeft < 6 || daysLeft > 31) continue;
+    }
     try {
       const found = storeStateFrom(await subscriber(c.organizer_id), ENTITLEMENT);
       if (!found) {
@@ -103,7 +115,7 @@ async function planAnnual(circles: Circle[], now: number): Promise<{ planned: Pl
         continue;
       }
       const email = annualNotice({ circleName: await circleName(c.circle_id), plan, store: c.source, state: found.state });
-      planned.push({ circleId: c.circle_id, organizerId: c.organizer_id, to, noticeKey: "", email });
+      planned.push({ circleId: c.circle_id, organizerId: c.organizer_id, to, noticeKey, email });
     } catch (e) {
       skipped.push(`${c.circle_id}: ${(e as Error).message}`);
     }

@@ -76,10 +76,15 @@ function render(paragraphs: string[]): Email["html"] {
     .join("")}</body></html>`;
 }
 
+// "Mom's circle", or "your circle" when the name is missing.
+function circlePhrase(name: string | null): string {
+  return name ? `${name}'s circle` : "your circle";
+}
+
 const SIGNOFF = "Questions? Reply to this email or write to support@condorllc.org.\n\nDailyPulse, from Condor LLC\n202 N Cedar Ave, Suite 1, Owatonna, MN 55060";
 
 export function annualNotice(args: {
-  circleName: string;
+  circleName: string | null;
   plan: Plan;
   store: Store;
   state: StoreState;
@@ -88,7 +93,7 @@ export function annualNotice(args: {
   const renews = state.expiresAt ? formatDate(state.expiresAt) : null;
   const paragraphs = [
     "Hi,",
-    `This is your yearly reminder about the DailyPulse subscription for ${circleName}'s circle.`,
+    `This is your yearly reminder about the DailyPulse subscription for ${circlePhrase(circleName)}.`,
     [
       `Plan: ${planName(plan)}`,
       `You pay: ${priceLine(plan, state.price)}`,
@@ -109,7 +114,7 @@ export function annualNotice(args: {
 }
 
 export function priceChangeNotice(args: {
-  circleName: string;
+  circleName: string | null;
   plan: Plan;
   store: Store;
   oldPrice: string;
@@ -120,7 +125,7 @@ export function priceChangeNotice(args: {
   const period = plan.billing === "yearly" ? "year" : "month";
   const paragraphs = [
     "Hi,",
-    `The price of ${planName(plan)} is changing, and it's the plan you have for ${circleName}'s circle.`,
+    `The price of ${planName(plan)} is changing, and it's the plan you have for ${circlePhrase(circleName)}.`,
     [`Now: ${oldPrice} a ${period}`, `From your first renewal on or after ${effective}: ${newPrice} a ${period}`].join("\n"),
     `${STORE_NAMES[store] === "the App Store" ? "Apple" : "Google"} may also ask you to agree to the new price. If you don't, your subscription will end at the end of the period you've paid for.`,
     `If you'd rather cancel, do it at least 24 hours before your next renewal. ${CANCEL_STEPS[store]} Or go to ${MANAGE_URLS[store]}.`,

@@ -53,10 +53,10 @@ test("only active store subscriptions are candidates", async () => {
 });
 
 test("a circle that got its yearly email isn't picked again for 330 days", async () => {
-  await asService("insert into public.subscription_notices (circle_id, user_id, kind) values ($1, $2, 'annual')", [
-    circles.store,
-    store,
-  ]);
+  await asService(
+    "insert into public.subscription_notices (circle_id, user_id, kind, notice_key) values ($1, $2, 'annual', '2026-10-10')",
+    [circles.store, store],
+  );
   assert.equal((await asService("select * from public.store_subscribed_circles('annual')")).rows.length, 0);
   // A price change still reaches it.
   assert.equal((await asService("select * from public.store_subscribed_circles('price_change')")).rows.length, 1);
@@ -64,6 +64,12 @@ test("a circle that got its yearly email isn't picked again for 330 days", async
     circles.store,
   ]);
   assert.equal((await asService("select * from public.store_subscribed_circles('annual')")).rows.length, 1);
+  // And next year's can be recorded.
+  await asService(
+    "insert into public.subscription_notices (circle_id, user_id, kind, notice_key) values ($1, $2, 'annual', '2027-09-06')",
+    [circles.store, store],
+  );
+  assert.equal((await asService("select * from public.store_subscribed_circles('annual')")).rows.length, 0);
 });
 
 test("the same notice can't be recorded twice", async () => {

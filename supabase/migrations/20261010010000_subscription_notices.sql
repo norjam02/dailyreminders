@@ -13,8 +13,9 @@ create table public.subscription_notices (
   circle_id uuid not null references public.circles (id) on delete cascade,
   user_id uuid not null,
   kind text not null check (kind in ('annual', 'price_change')),
-  -- For a price change, which change it was (so each is sent once).
-  notice_key text not null default '',
+  -- Which notice: the send date for a yearly one, or the plan and date of a
+  -- price change. Each is recorded, and so sent, once.
+  notice_key text not null,
   sent_at timestamptz not null default now(),
   unique (circle_id, kind, notice_key)
 );
