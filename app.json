@@ -63,6 +63,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "22e2394d-799e-4190-82c0-2cc99f9cf13b"
+      }
+    },
+    "owner": "norjam02s-team"
   }
 }
