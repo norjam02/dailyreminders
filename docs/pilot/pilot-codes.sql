@@ -1,4 +1,4 @@
--- DailyPulse pilot codes, November 16-29, 2026.
+-- DailyPulse pilot codes, November 23 - December 6, 2026.
 --
 -- Run once in the Supabase SQL Editor, close to the start of the pilot (each
 -- code can be used for 90 days after it's made). Makes one code per pilot
