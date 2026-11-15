@@ -1,5 +1,5 @@
-// The organizer's check-in settings: how, when, how firmly, and what the
-// parent can reply.
+// The organizer's check-in settings: how, when, how firmly, what the person
+// checking in can reply, and the number to call if they miss one.
 
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
@@ -9,7 +9,7 @@ import { Button, Chip, Chips, Choice, ErrorText, Field, Screen, Section, T } fro
 import { space } from "@/lib/theme";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
-import { deviceTimeZone, HOUR_CHOICES, hourLabel, timeZoneLabel, US_TIME_ZONES } from "@/lib/time";
+import { deviceTimeZone, hourLabel, TIME_GROUPS, timeZoneLabel, US_TIME_ZONES } from "@/lib/time";
 import {
   MAX_REPLIES,
   REPLY_LENGTH,
@@ -48,13 +48,18 @@ function defaults(circleId: string): CheckinPlan {
     wait_minutes: 60,
     quick_replies: [],
     personal_note: null,
+    call_phone: null,
   };
 }
+
+// Digits with the usual separators, optionally starting with +. Matches the
+// database's check.
+const PHONE = /^\+?[0-9][0-9 ().-]{6,22}$/;
 
 export default function Plan() {
   const { current, isOrganizer, isActive } = useSession();
   const circleId = current?.circle.id;
-  const parentName = current?.circle.name ?? "them";
+  const personName = current?.circle.name ?? "them";
   const isParent = current?.role === "parent";
 
   const [plan, setPlan] = useState<CheckinPlan | null>(null);
@@ -71,7 +76,7 @@ export default function Plan() {
       if (!circleId) return;
       supabase
         .from("checkin_plans")
-        .select("circle_id, mode, photo_prompt, times, timezone, firmness, wait_minutes, quick_replies, personal_note")
+        .select("circle_id, mode, photo_prompt, times, timezone, firmness, wait_minutes, quick_replies, personal_note, call_phone")
         .eq("circle_id", circleId)
         .maybeSingle()
         .then(({ data, error: loadError }) => {
@@ -145,6 +150,11 @@ export default function Plan() {
       setError("Write your note, or choose Nothing extra.");
       return;
     }
+    const phone = plan.call_phone?.trim() || null;
+    if (phone && !PHONE.test(phone)) {
+      setError("That phone number doesn't look right. Use digits, like 612 555 0134.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const fields = {
@@ -156,6 +166,7 @@ export default function Plan() {
       wait_minutes: plan.wait_minutes,
       quick_replies: extra === "replies" ? plan.quick_replies : [],
       personal_note: extra === "note" ? plan.personal_note?.trim() || null : null,
+      call_phone: phone,
     };
     const { error: saveError } = exists
       ? await supabase.from("checkin_plans").update(fields).eq("circle_id", circleId)
@@ -168,7 +179,7 @@ export default function Plan() {
 
   return (
     <Screen>
-      <Section title={isParent ? "How you check in" : `How ${parentName} checks in`}>
+      <Section title={isParent ? "How you check in" : `How ${personName} checks in`}>
         {MODES.map((m) => (
           <Choice
             key={m.mode}
@@ -197,18 +208,41 @@ export default function Plan() {
       ) : null}
 
       <Section title="When" hint="Pick up to three times a day.">
-        <Chips>
-          {HOUR_CHOICES.map((time) => (
-            <Chip
-              key={time}
-              label={hourLabel(time)}
-              selected={plan.times.includes(time)}
-              disabled={!plan.times.includes(time) && plan.times.length >= 3}
-              onPress={() => toggleTime(time)}
-            />
-          ))}
-        </Chips>
+        {TIME_GROUPS.map((group) => (
+          <View key={group.label} style={styles.timeGroup}>
+            <T variant="small" tone="muted">
+              {group.label}
+            </T>
+            <Chips>
+              {group.times.map((time) => (
+                <Chip
+                  key={time}
+                  label={hourLabel(time)}
+                  selected={plan.times.includes(time)}
+                  disabled={!plan.times.includes(time) && plan.times.length >= 3}
+                  onPress={() => toggleTime(time)}
+                />
+              ))}
+            </Chips>
+          </View>
+        ))}
       </Section>
+
+      <Field
+        label={isParent ? "Your phone number" : `${personName}'s phone number`}
+        hint={
+          isParent
+            ? "Optional. If you miss a check-in, your circle can call you with one tap."
+            : `Optional. If ${personName} misses a check-in, your circle can call with one tap.`
+        }
+        placeholder="612 555 0134"
+        value={plan.call_phone ?? ""}
+        onChangeText={(v) => update({ call_phone: v })}
+        keyboardType="phone-pad"
+        textContentType="telephoneNumber"
+        autoComplete="tel"
+        maxLength={24}
+      />
 
       {/* The essentials stay up front; the rest has sensible defaults. */}
       {moreOpen ? null : (
@@ -233,7 +267,7 @@ export default function Plan() {
 
       {moreOpen ? (
         <>
-      <Section title={isParent ? "Your time zone" : `${parentName}'s time zone`}>
+      <Section title={isParent ? "Your time zone" : `${personName}'s time zone`}>
         <Chips>
           {US_TIME_ZONES.map((z) => (
             <Chip
@@ -284,14 +318,14 @@ export default function Plan() {
         <Choice label="Nothing extra" selected={extra === "none"} onPress={() => setExtra("none")} />
         <Choice
           label="Quick replies"
-          description={`${isParent ? "You" : parentName} can tap one to send back, like "Love you!"`}
+          description={`${isParent ? "You" : personName} can tap one to send back, like "Love you!"`}
           selected={extra === "replies"}
           onPress={() => setExtra("replies")}
         />
         {!isParent ? (
           <Choice
             label="A note from you"
-            description={`${parentName} sees it when it's time to check in.`}
+            description={`${personName} sees it when it's time to check in.`}
             selected={extra === "note"}
             onPress={() => setExtra("note")}
           />
@@ -350,4 +384,5 @@ export default function Plan() {
 
 const styles = StyleSheet.create({
   summary: { gap: space.xs },
+  timeGroup: { gap: space.xs },
 });

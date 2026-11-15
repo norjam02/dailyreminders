@@ -7,6 +7,8 @@
 // paid itself.
 //
 // RevenueCat setup this code expects:
+//   - Optional: a free trial as the introductory offer on each product. The
+//     paywall offers it only when the store says this person can get it.
 //   - Entitlement "circle", with all four products attached
 //   - Standard (up to 4 people): dailypulse_monthly ($4.99), dailypulse_yearly ($49)
 //   - Plus (up to 10 people): dailypulse_plus_monthly ($9.99), dailypulse_plus_yearly ($99)
@@ -32,16 +34,41 @@ export const SIZES: { id: Size; label: string; people: number }[] = [
   { id: "plus", label: "Up to 10 people", people: 10 },
 ];
 
-export type Price = { size: Size; billing: Billing; price: string; description: string };
+export type Price = {
+  size: Size;
+  billing: Billing;
+  price: string;
+  description: string;
+  // The price as a number, in the store's currency, for working out savings.
+  amount: number;
+  // A free trial this person can get, such as "1 week", or null.
+  trial: string | null;
+};
 
 // Shown until the store's own prices load. The store's prices are in the
 // person's own currency, so the descriptions are recomputed from them.
 export const DEFAULT_PRICES: Price[] = [
-  { size: "standard", billing: "yearly", price: "$49 a year", description: "About $4.08 a month, less than paying monthly." },
-  { size: "standard", billing: "monthly", price: "$4.99 a month", description: "Cancel anytime." },
-  { size: "plus", billing: "yearly", price: "$99 a year", description: "About $8.25 a month, less than paying monthly." },
-  { size: "plus", billing: "monthly", price: "$9.99 a month", description: "Cancel anytime." },
+  { size: "standard", billing: "yearly", price: "$49 a year", description: "About $4.08 a month", amount: 49, trial: null },
+  { size: "standard", billing: "monthly", price: "$4.99 a month", description: "Cancel anytime", amount: 4.99, trial: null },
+  { size: "plus", billing: "yearly", price: "$99 a year", description: "About $8.25 a month", amount: 99, trial: null },
+  { size: "plus", billing: "monthly", price: "$9.99 a month", description: "Cancel anytime", amount: 9.99, trial: null },
 ];
+
+// How much paying yearly saves against twelve monthly payments, as a whole
+// percent, or null when it saves nothing.
+export function yearlySavings(prices: Price[], size: Size): number | null {
+  const yearly = prices.find((p) => p.size === size && p.billing === "yearly")?.amount;
+  const monthly = prices.find((p) => p.size === size && p.billing === "monthly")?.amount;
+  if (!yearly || !monthly) return null;
+  const percent = Math.floor((1 - yearly / (monthly * 12)) * 100);
+  return percent > 0 ? percent : null;
+}
+
+// "7 days", "1 week", "1 month": the length of a free trial.
+function trialLength(units: number, unit: string): string {
+  const name = { DAY: "day", WEEK: "week", MONTH: "month", YEAR: "year" }[unit] ?? "day";
+  return `${units} ${name}${units === 1 ? "" : "s"}`;
+}
 
 const API_KEY = Platform.select({
   ios: process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY,
@@ -103,18 +130,32 @@ function formatMoney(amount: number, currency: string): string {
 export async function loadPrices(userId: string): Promise<Price[]> {
   try {
     if (!(await ensureConfigured(userId))) return DEFAULT_PRICES;
-    return await Promise.all(
-      DEFAULT_PRICES.map(async (p) => {
-        const product = (await findPackage(p.size, p.billing))?.product;
-        if (!product) return p;
-        const period = p.billing === "yearly" ? "year" : "month";
-        const description =
-          p.billing === "yearly"
-            ? `About ${formatMoney(product.price / 12, product.currencyCode)} a month, less than paying monthly.`
-            : "Cancel anytime.";
-        return { ...p, price: `${product.priceString} a ${period}`, description };
-      }),
-    );
+    const products = await Promise.all(DEFAULT_PRICES.map(async (p) => (await findPackage(p.size, p.billing))?.product));
+
+    // A free trial set up in the store shows only to people who can still get
+    // it. Apple says who can; Google offers it only to those who can.
+    const trialIds = products.filter((p) => p?.introPrice?.price === 0).map((p) => p!.identifier);
+    let eligible: Record<string, { status: number }> = {};
+    if (trialIds.length && Platform.OS === "ios") {
+      eligible = await Purchases.checkTrialOrIntroductoryPriceEligibility(trialIds).catch(() => ({}));
+    }
+    const canTry = (id: string) =>
+      Platform.OS !== "ios" ||
+      eligible[id]?.status === Purchases.INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE;
+
+    return DEFAULT_PRICES.map((p, i) => {
+      const product = products[i];
+      if (!product) return p;
+      const period = p.billing === "yearly" ? "year" : "month";
+      const description =
+        p.billing === "yearly" ? `About ${formatMoney(product.price / 12, product.currencyCode)} a month` : "Cancel anytime";
+      const intro = product.introPrice;
+      const trial =
+        intro && intro.price === 0 && canTry(product.identifier)
+          ? trialLength(intro.periodNumberOfUnits * Math.max(intro.cycles, 1), intro.periodUnit)
+          : null;
+      return { ...p, price: `${product.priceString} a ${period}`, description, amount: product.price, trial };
+    });
   } catch {
     return DEFAULT_PRICES;
   }

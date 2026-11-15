@@ -3,13 +3,13 @@
 
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 
 import { Button, Card, ErrorText, Screen, SignOutButton, T } from "@/components/ui";
 import { openManageSubscription, PURCHASES_AVAILABLE } from "@/lib/billing";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
-import { space } from "@/lib/theme";
+import { colors, fonts, radius, space } from "@/lib/theme";
 import type { Member } from "@/lib/types";
 
 export default function Members() {
@@ -120,7 +120,12 @@ export default function Members() {
 
   return (
     <Screen>
-      {isOrganizer ? <Button label="Invite someone" onPress={() => router.push("/invite")} /> : null}
+      {isOrganizer ? (
+        <>
+          <Button label="Invite someone" onPress={() => router.push("/invite")} />
+          <Button label="Welcome screen" variant="secondary" onPress={() => router.push("/welcome-edit")} />
+        </>
+      ) : null}
       <ErrorText message={error} />
 
       {isOrganizer && waiting.length > 0 ? (
@@ -161,14 +166,19 @@ export default function Members() {
           const canRemove = isOrganizer ? !isMe : isMe;
           return (
             <Card key={m.user_id}>
-              <T variant="heading">
-                {m.profile?.display_name ?? "Someone"}
-                {isMe ? " (you)" : ""}
-              </T>
-              <T tone="muted">
-                {m.role === "parent" ? "Checks in each day" : viewerIsParent ? "Looks out for you" : `Looks out for ${personName}`}
-                {isOrg ? ", set up this circle" : ""}
-              </T>
+              <View style={styles.row}>
+                <Initial name={m.profile?.display_name ?? "?"} highlight={m.role === "parent"} />
+                <View style={styles.rowText}>
+                  <T variant="heading">
+                    {m.profile?.display_name ?? "Someone"}
+                    {isMe ? " (you)" : ""}
+                  </T>
+                  <T tone="muted">
+                    {m.role === "parent" ? "Checks in each day" : viewerIsParent ? "Looks out for you" : `Looks out for ${personName}`}
+                    {isOrg ? ", set up this circle" : ""}
+                  </T>
+                </View>
+              </View>
               {canRemove ? (
                 <Button
                   label={isMe ? "Leave the circle" : "Remove"}
@@ -189,6 +199,32 @@ export default function Members() {
   );
 }
 
+// A round badge with the first letter of someone's name. Decoration only.
+function Initial({ name, highlight }: { name: string; highlight: boolean }) {
+  return (
+    <View
+      style={[styles.initial, highlight && { backgroundColor: colors.warmSoft }]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Text style={[styles.initialLabel, highlight && { color: colors.ink }]}>
+        {Array.from(name.trim())[0]?.toUpperCase() ?? "?"}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   group: { gap: space.sm },
+  row: { flexDirection: "row", alignItems: "center", gap: space.md },
+  rowText: { flex: 1 },
+  initial: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primarySoft,
+  },
+  initialLabel: { fontFamily: fonts.heavy, fontSize: 22, color: colors.primary },
 });

@@ -12,15 +12,13 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const BUCKET = "checkin-photos";
-
-async function removeFolder(circleId: string) {
+async function removeFolder(bucket: string, circleId: string) {
   // Photos live at <circle_id>/<file>.
   for (;;) {
-    const { data, error } = await admin.storage.from(BUCKET).list(circleId, { limit: 100 });
+    const { data, error } = await admin.storage.from(bucket).list(circleId, { limit: 100 });
     if (error) throw error;
     if (!data?.length) return;
-    const { error: removeError } = await admin.storage.from(BUCKET).remove(data.map((f) => `${circleId}/${f.name}`));
+    const { error: removeError } = await admin.storage.from(bucket).remove(data.map((f) => `${circleId}/${f.name}`));
     if (removeError) throw removeError;
     if (data.length < 100) return;
   }
@@ -37,7 +35,16 @@ Deno.serve(async (req) => {
   try {
     const { data: circles, error: dataError } = await admin.rpc("delete_account_data", { p_user: user.id });
     if (dataError) throw dataError;
-    for (const circleId of (circles as string[] | null) ?? []) await removeFolder(circleId);
+    const ids = (circles as string[] | null) ?? [];
+    for (const circleId of ids) await removeFolder("checkin-photos", circleId);
+    // A circle's welcome photo goes only when the circle itself was deleted,
+    // not when the person who checks in leaves it.
+    if (ids.length) {
+      const { data: kept, error: keptError } = await admin.from("circles").select("id").in("id", ids);
+      if (keptError) throw keptError;
+      const remaining = new Set((kept ?? []).map((c: { id: string }) => c.id));
+      for (const circleId of ids.filter((id) => !remaining.has(id))) await removeFolder("welcome-photos", circleId);
+    }
     const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
     if (deleteError) throw deleteError;
     return Response.json({ deleted: true }, { headers: cors });

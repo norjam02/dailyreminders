@@ -65,10 +65,11 @@ The backend is [Supabase](https://supabase.com): Postgres, sign-in, and photo st
 - **circles**: one parent and the family and caregivers around them, with the organizer who set it up.
 - **circle_members**: each person's role (child, parent, caregiver, family) and status (pending, active, removed). One parent per circle.
 - **invites**: one-time join codes, six characters without look-alikes, expiring after a day.
-- **checkin_plans**: the organizer's settings for the circle: mode, photo prompt, times, time zone, firmness, wait, quick replies, and a personal note.
+- **checkin_plans**: the organizer's settings for the circle: mode, photo prompt, times (on the hour or half hour), time zone, firmness, wait, quick replies, a personal note, and an optional phone number to call when a check-in is missed.
 - **checkins**: one row per scheduled check-in, with the parent's answer.
 - **push_tokens**: each device's notification token.
 - **checkin-photos**: a private storage bucket, with files at `<circle_id>/<file>`.
+- **welcome-photos**: a private storage bucket for each circle's welcome photo, same layout. Only the organizer adds or removes; active members see it.
 
 ### Who can do what
 
@@ -209,7 +210,7 @@ The Terms promise organizers an email once a year, and 7 to 30 days before any p
 | Subscribe | Organizer | Yearly or monthly plan through the App Store or Google Play, restore a purchase, or a pilot code; shown after check-in settings until the circle is on |
 | My Circle | Everyone | The circle's members; the organizer approves and removes, others can leave |
 
-Design: Atkinson Hyperlegible (made for readers with low vision), large type, 56-point touch targets, calm blue for actions, green for checked in, and amber rather than red for a missed check-in. Light mode only for the pilot.
+Design: Atkinson Hyperlegible Next (made for readers with low vision), large type, 56-point touch targets, calm blue for actions, green for checked in, and amber rather than red for a missed check-in. Atkinson Hyperlegible Next with heavy weights for headlines, a warm paper-white background, and a dark mode that follows the phone's setting when the app opens.
 
 ### Supabase email setup
 

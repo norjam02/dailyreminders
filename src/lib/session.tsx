@@ -38,7 +38,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     const { data, error } = await supabase
       .from("circle_members")
-      .select("circle_id, role, status, circle:circles(id, name, organizer_id, access:circle_access(active_until, max_members))")
+      .select("circle_id, role, status, circle:circles(id, name, organizer_id, welcome_message, welcome_photo_path, access:circle_access(active_until, max_members))")
       .eq("user_id", s.user.id)
       .neq("status", "removed")
       .order("joined_at", { ascending: true });

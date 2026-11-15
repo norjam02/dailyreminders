@@ -378,6 +378,57 @@ describe("circles and joining", () => {
     });
   });
 
+  describe("welcome photo and message", () => {
+    const photo = () => `${circle}/welcome-1.jpg`;
+
+    test("the organizer uploads a welcome photo and sets the message", async () => {
+      await as(users.child, "insert into storage.objects (bucket_id, name) values ('welcome-photos', $1)", [photo()]);
+      await as(users.child, "update public.circles set welcome_message = 'Morning! Love you', welcome_photo_path = $2 where id = $1", [circle, photo()]);
+      assert.equal(await value(users.parent, "select welcome_message from public.circles where id = $1", [circle]), "Morning! Love you");
+    });
+
+    test("everyone active sees the welcome photo, strangers do not", async () => {
+      assert.equal(await count(users.parent, "select name from storage.objects where bucket_id = 'welcome-photos'"), 1);
+      assert.equal(await count(users.caregiver, "select name from storage.objects where bucket_id = 'welcome-photos'"), 1);
+      assert.equal(await count(users.stranger, "select name from storage.objects where bucket_id = 'welcome-photos'"), 0);
+    });
+
+    test("only the organizer changes the welcome", async () => {
+      await assert.rejects(
+        as(users.parent, "insert into storage.objects (bucket_id, name) values ('welcome-photos', $1)", [`${circle}/mine.jpg`]),
+        /row-level security/,
+      );
+      const result = await as(users.caregiver, "update public.circles set welcome_message = 'Hi' where id = $1 returning id", [circle]);
+      assert.equal(result.rows.length, 0);
+    });
+
+    test("the welcome photo must be in this circle's folder, and the message is short", async () => {
+      await assert.rejects(
+        as(users.child, "update public.circles set welcome_photo_path = 'not-a-circle/x.jpg' where id = $1", [circle]),
+        /check constraint/,
+      );
+      await assert.rejects(
+        as(users.child, "update public.circles set welcome_message = $2 where id = $1", [circle, "x".repeat(121)]),
+        /check constraint/,
+      );
+    });
+  });
+
+  describe("number to call", () => {
+    test("the organizer adds a number and the circle sees it", async () => {
+      await as(users.child, "update public.checkin_plans set call_phone = '+1 (612) 555-0134' where circle_id = $1", [circle]);
+      assert.equal(await value(users.caregiver, "select call_phone from public.checkin_plans where circle_id = $1", [circle]), "+1 (612) 555-0134");
+      assert.equal(await count(users.stranger, "select call_phone from public.checkin_plans where circle_id = $1", [circle]), 0);
+    });
+
+    test("something that isn't a phone number is refused", async () => {
+      await assert.rejects(
+        as(users.child, "update public.checkin_plans set call_phone = 'call me' where circle_id = $1", [circle]),
+        /check constraint/,
+      );
+    });
+  });
+
   describe("strangers and direct writes", () => {
     test("a stranger sees nothing", async () => {
       for (const table of ["circles", "circle_members", "checkin_plans", "checkins", "invites"]) {
