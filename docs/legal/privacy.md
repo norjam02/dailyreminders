@@ -17,11 +17,13 @@ This policy explains what information DailyPulse collects, how Condor LLC uses i
 | Check-in settings: times, time zone, reminders, quick replies, a note | Organizers | To send reminders at the right time |
 | Check-ins: when, how (tap or photo), and any quick reply | The person checking in | To show the circle and alert them if one is missed |
 | Photos taken for a check-in | The person checking in | To show the circle |
+| A welcome photo and message, if added | Organizers | To greet the circle when they open the app |
+| A phone number to call, if added | Organizers | So the circle can call with one tap if a check-in is missed |
 | Notification token and phone type (iPhone or Android) | Everyone | To send notifications to the right phone |
 | Subscription status: plan, store, and end date | Apple or Google, through RevenueCat | To know whether a circle is active. We never see card or bank details. |
 | Sign-in records, such as time and IP address | Everyone | To keep accounts secure and fix problems |
 
-We don't collect your location, contacts, or health information, and we don't use the camera or photo library except when you take a check-in photo. People who check in can use DailyPulse without an email address.
+We don't collect your location, contacts, or health information, and we don't use the camera or photo library except when you take a check-in photo or choose a welcome photo. A phone number is only stored if an organizer adds one, and DailyPulse never calls or texts it; it only opens your phone's dialer when you tap Call. People who check in can use DailyPulse without an email address.
 
 ## How we use it
 
@@ -36,7 +38,7 @@ We use your information to run, secure, support, and improve DailyPulse, and to 
 
 ## Who sees your information
 
-**Your circle.** Active members of a circle see each other's names, the check-in settings, check-ins, quick replies, and photos. People waiting to be approved see only the circle's name. Someone removed from a circle stops seeing anything new.
+**Your circle.** Active members of a circle see each other's names, the check-in settings (including any phone number to call), check-ins, quick replies, photos, and the circle's welcome. People waiting to be approved see only the circle's name. Someone removed from a circle stops seeing anything new.
 
 **Companies that help us run DailyPulse.** They handle information only on our behalf and under contracts that limit how they use it.
 
@@ -54,7 +56,7 @@ We use your information to run, secure, support, and improve DailyPulse, and to 
 
 We keep your information while your account is open, then delete it.
 
-- **Deleting your account** in My Circle removes your account, name, memberships, and notification tokens right away. If you set up a circle, the circle and all its check-ins and photos are deleted too. If you're the person checking in, your check-in photos are deleted.
+- **Deleting your account** in My Circle removes your account, name, memberships, and notification tokens right away. If you set up a circle, the circle and all its check-ins, photos, and welcome photo are deleted too. If you're the person checking in, your check-in photos are deleted.
 - **Leaving or being removed from a circle** stops your access. Check-ins you already shared stay with the circle until it's deleted.
 - **Backups** may keep copies for up to 30 days before they're overwritten.
 - **Sign-in records** are kept for a limited time for security.

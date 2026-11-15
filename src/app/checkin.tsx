@@ -1,5 +1,6 @@
-// The parent's screen: one big thing to do. Check in with a tap, a photo, or a
-// selfie, add a friendly reply if they like, or put it off once with Later.
+// The check-in screen for the person who checks in: one big thing to do.
+// Check in with a tap, a photo, or a selfie, add a friendly reply if they
+// like, or put it off once with Later.
 
 import { File } from "expo-file-system";
 import * as Haptics from "expo-haptics";
@@ -187,11 +188,9 @@ export default function CheckinScreen() {
         <T variant="display" style={styles.headerTitle}>
           {myName ? `Hi, ${myName}` : "Hi there"}
         </T>
+        <IconButton name={icons.people} label="My Circle" onPress={() => router.push("/members")} />
         {isOrganizer ? (
-          <>
-            <IconButton name={icons.people} label="My Circle" onPress={() => router.push("/members")} />
-            <IconButton name={icons.settings} label="Check-in settings" onPress={() => router.push("/plan")} />
-          </>
+          <IconButton name={icons.settings} label="Check-in settings" onPress={() => router.push("/plan")} />
         ) : null}
       </View>
 

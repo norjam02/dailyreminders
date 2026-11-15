@@ -1,4 +1,4 @@
-// Times are stored in the parent's time zone. These helpers format them for
+// Times are stored in the time zone of the person who checks in. These helpers format them for
 // display and list the choices the organizer picks from.
 
 import { getCalendars } from "expo-localization";
@@ -21,8 +21,18 @@ export function timeZoneLabel(zone: string): string {
   return US_TIME_ZONES.find((z) => z.zone === zone)?.label ?? zone.replace(/_/g, " ");
 }
 
-// Check-in times offered: every hour from 7 AM to 9 PM, as "HH:00".
-export const HOUR_CHOICES = Array.from({ length: 15 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
+// Check-in times offered: every half hour from 7 AM to 9 PM, as "HH:MM".
+export const TIME_CHOICES = Array.from({ length: 29 }, (_, i) => {
+  const minutes = 7 * 60 + i * 30;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${minutes % 60 === 0 ? "00" : "30"}`;
+});
+
+// The same times, grouped so the list is easy to scan.
+export const TIME_GROUPS = [
+  { label: "Morning", times: TIME_CHOICES.filter((t) => t < "12:00") },
+  { label: "Afternoon", times: TIME_CHOICES.filter((t) => t >= "12:00" && t < "17:00") },
+  { label: "Evening", times: TIME_CHOICES.filter((t) => t >= "17:00") },
+];
 
 // "10:00" or "10:00:00" -> "10 AM"
 export function hourLabel(time: string): string {
@@ -32,12 +42,12 @@ export function hourLabel(time: string): string {
   return m ? `${hour12}:${String(m).padStart(2, "0")} ${suffix}` : `${hour12} ${suffix}`;
 }
 
-// A timestamp shown in the parent's time zone, e.g. "10:04 AM".
+// A timestamp shown in the check-in time zone, e.g. "10:04 AM".
 export function clockTime(iso: string, zone: string): string {
   return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: zone }).format(new Date(iso));
 }
 
-// "Today", "Yesterday", or "Mon, Nov 16", in the parent's time zone.
+// "Today", "Yesterday", or "Mon, Nov 16", in the check-in time zone.
 export function dayLabel(iso: string, zone: string): string {
   const fmt = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: zone });
   const day = fmt.format(new Date(iso));

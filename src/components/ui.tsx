@@ -20,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 
 import { useSession } from "@/lib/session";
-import { colors, fonts, radius, space, type } from "@/lib/theme";
+import { colors, fonts, radius, shadow, space, type } from "@/lib/theme";
 
 export function Screen({
   children,
@@ -292,6 +292,12 @@ export const icons = {
   camera: { ios: "camera.fill", android: "photo_camera" },
   wave: { ios: "hand.wave.fill", android: "waving_hand" },
   photo: { ios: "photo.fill", android: "image" },
+  phone: { ios: "phone.fill", android: "call" },
+  heart: { ios: "heart.fill", android: "favorite" },
+  bell: { ios: "bell.fill", android: "notifications" },
+  sparkles: { ios: "sparkles", android: "auto_awesome" },
+  edit: { ios: "pencil", android: "edit" },
+  lock: { ios: "lock.fill", android: "lock" },
 } satisfies Record<string, IconName>;
 
 // A round icon button for screen headers. 48 pt, with a spoken label.
@@ -403,8 +409,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: space.md,
+    padding: space.md + 4,
     gap: space.sm,
+    ...shadow,
   },
   error: { marginTop: space.xs },
   iconButton: {
@@ -414,5 +421,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surface,
+    ...shadow,
   },
 });

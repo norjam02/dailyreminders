@@ -13,6 +13,9 @@ export type Circle = {
   id: string;
   name: string;
   organizer_id: string;
+  // The welcome the organizer sets: shown for a moment when the app opens.
+  welcome_message?: string | null;
+  welcome_photo_path?: string | null;
   // Present when the circle is paid or on a pilot code. PostgREST may return
   // the one-to-one join as an object or a one-item list.
   access?: CircleAccess | CircleAccess[] | null;
@@ -43,6 +46,8 @@ export type CheckinPlan = {
   wait_minutes: 30 | 60 | 120;
   quick_replies: string[];
   personal_note: string | null;
+  // The number Home offers to call when a check-in is missed.
+  call_phone: string | null;
 };
 
 export type Checkin = {

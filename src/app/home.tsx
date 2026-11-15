@@ -5,7 +5,7 @@
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { Button, Card, Icon, IconButton, icons, Screen, T, type IconName } from "@/components/ui";
@@ -155,9 +155,23 @@ export default function Home() {
             upcoming={upcoming ?? null}
             name={name}
             zone={zone}
+            phone={plan?.call_phone ?? null}
             photoUrl={today?.photo_path ? photos[today.photo_path] : undefined}
           />
         </Animated.View>
+      ) : null}
+
+      {ready && isOrganizer && isActive && !current.circle.welcome_message && !current.circle.welcome_photo_path ? (
+        <Card>
+          <View style={styles.cardRow}>
+            <Icon name={icons.sparkles} size={28} color={colors.warm} />
+            <View style={styles.cardText}>
+              <T variant="heading">Make it yours</T>
+              <T tone="muted">Add a photo and a message that greets your circle each time they open DailyPulse.</T>
+            </View>
+          </View>
+          <Button label="Add a welcome" variant="secondary" onPress={() => router.push("/welcome-edit")} />
+        </Card>
       ) : null}
 
       {ready && streak >= 2 ? (
@@ -201,12 +215,14 @@ function StatusHero({
   upcoming,
   name,
   zone,
+  phone,
   photoUrl,
 }: {
   today: Checkin | null;
   upcoming: Checkin | null;
   name: string;
   zone: string;
+  phone: string | null;
   photoUrl?: string;
 }) {
   let tone: "done" | "attention" | "plain" = "plain";
@@ -223,7 +239,9 @@ function StatusHero({
     tone = "attention";
     icon = icons.missed;
     title = `No check-in from ${name} yet`;
-    line = `Expected at ${clockTime(today.scheduled_for, zone)}. A call might be good.`;
+    line = phone
+      ? `Expected at ${clockTime(today.scheduled_for, zone)}. A call might be good.`
+      : `Expected at ${clockTime(today.scheduled_for, zone)}. A call or a message might be good.`;
   } else if (today) {
     icon = icons.waiting;
     title = `Waiting for ${name}`;
@@ -237,16 +255,17 @@ function StatusHero({
     title = "No check-ins scheduled";
   }
 
+  const callable = today?.status === "missed" && !!phone;
   const accent = tone === "done" ? colors.done : tone === "attention" ? colors.attention : colors.primary;
   const background = tone === "done" ? colors.doneSoft : tone === "attention" ? colors.attentionSoft : colors.primarySoft;
 
   return (
-    <View
-      style={[styles.hero, { backgroundColor: background, borderColor: accent }]}
-      accessible
-      accessibilityLabel={[title, line, today?.quick_reply].filter(Boolean).join(". ")}
-    >
-      <View style={styles.heroTop}>
+    <View style={[styles.hero, { backgroundColor: background, borderColor: accent }]}>
+      <View
+        style={styles.heroTop}
+        accessible
+        accessibilityLabel={[title, line].filter(Boolean).join(". ")}
+      >
         <Icon name={icon} size={56} color={accent} />
         <View style={styles.heroText}>
           <T variant="title">{title}</T>
@@ -256,6 +275,12 @@ function StatusHero({
       {today?.quick_reply ? <T variant="heading">&ldquo;{today.quick_reply}&rdquo;</T> : null}
       {photoUrl ? (
         <Image source={{ uri: photoUrl }} style={styles.heroPhoto} contentFit="cover" transition={250} />
+      ) : null}
+      {callable && phone ? (
+        <Button
+          label={`Call ${name}`}
+          onPress={() => Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, "")}`).catch(() => {})}
+        />
       ) : null}
     </View>
   );
@@ -353,9 +378,7 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.md,
     borderRadius: radius.card,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.warmSoft,
   },
   streakText: { flex: 1 },
   recent: { marginTop: space.sm },

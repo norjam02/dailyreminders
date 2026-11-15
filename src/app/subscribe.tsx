@@ -4,9 +4,9 @@
 import * as WebBrowser from "expo-web-browser";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, StyleSheet, View } from "react-native";
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button, Card, Choice, ErrorText, Field, Gap, Screen, Section, T } from "@/components/ui";
+import { Button, Card, Choice, ErrorText, Field, Gap, Icon, icons, Screen, Section, T } from "@/components/ui";
 import {
   DEFAULT_PRICES,
   loadPrices,
@@ -17,6 +17,7 @@ import {
   startPurchase,
   STORE_NAME,
   syncWithServer,
+  yearlySavings,
   type Billing,
   type PurchaseResult,
   type Size,
@@ -24,7 +25,7 @@ import {
 import { PRIVACY_URL, TERMS_URL } from "@/lib/links";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
-import { space } from "@/lib/theme";
+import { colors, fonts, radius, shadow, space } from "@/lib/theme";
 
 export default function Subscribe() {
   const { session, current, isOrganizer, isActive, memberLimit, refresh } = useSession();
@@ -43,6 +44,8 @@ export default function Subscribe() {
   const [busy, setBusy] = useState<"buy" | "code" | "restore" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  // The pilot code sits behind a small link once subscriptions are open.
+  const [codeOpen, setCodeOpen] = useState(!PURCHASES_AVAILABLE);
   // Paid, waiting for the server to catch up.
   const [waiting, setWaiting] = useState<string | null>(null);
   const startLimit = useRef(memberLimit);
@@ -177,6 +180,10 @@ export default function Subscribe() {
         `Photos and replies from ${name}`,
       ];
 
+  const savings = yearlySavings(prices, size);
+  const chosen = prices.find((p) => p.size === size && p.billing === billing);
+  const trial = upgrading ? null : (chosen?.trial ?? null);
+
   const pilotCode = (
     <Section title="Have a pilot code?">
       <Field label="Pilot code" value={code} onChangeText={setCode} autoCapitalize="characters" autoCorrect={false} />
@@ -196,10 +203,11 @@ export default function Subscribe() {
         <>
           <T variant="display">Start your circle</T>
           <T tone="muted">Setting up DailyPulse is free. A subscription makes your circle active.</T>
+          <FeedPreview name={forMyself ? "You" : name} />
           <View style={styles.benefits}>
             {benefits.map((b) => (
               <View key={b} style={styles.benefit} accessible accessibilityLabel={b}>
-                <T>✓</T>
+                <Icon name={icons.done} size={22} color={colors.done} />
                 <T style={styles.benefitText}>{b}</T>
               </View>
             ))}
@@ -220,24 +228,38 @@ export default function Subscribe() {
       )}
 
       <Section title="Choose a plan" hint="One subscription covers your whole circle.">
-        {prices
-          .filter((p) => p.size === size)
-          .map((p) => (
-            <Choice
-              key={p.billing}
-              label={`${p.billing === "yearly" ? "Yearly" : "Monthly"}: ${p.price}`}
-              description={p.description}
-              selected={billing === p.billing}
-              onPress={() => setBilling(p.billing)}
-            />
-          ))}
+        <View style={styles.plans} accessibilityRole="radiogroup">
+          {(["yearly", "monthly"] as const).map((b) => {
+            const p = prices.find((x) => x.size === size && x.billing === b);
+            if (!p) return null;
+            return (
+              <PlanCard
+                key={b}
+                title={b === "yearly" ? "Yearly" : "Monthly"}
+                price={p.price}
+                description={p.description}
+                badge={b === "yearly" && savings ? `Save ${savings}%` : null}
+                selected={billing === b}
+                onPress={() => setBilling(b)}
+              />
+            );
+          })}
+        </View>
       </Section>
 
       {PURCHASES_AVAILABLE ? (
         <>
           <ErrorText message={error} />
-          <Button label={upgrading ? "Upgrade" : "Subscribe"} onPress={buy} busy={busy === "buy"} disabled={!!busy} />
+          <Button
+            label={upgrading ? "Upgrade" : trial ? `Try it free for ${trial}` : "Subscribe"}
+            onPress={buy}
+            busy={busy === "buy"}
+            disabled={!!busy}
+          />
           <T tone="muted" variant="small">
+            {trial && chosen
+              ? `Free for ${trial}, then ${chosen.price}. Cancel before the trial ends and you won't be charged. `
+              : ""}
             You pay through your {STORE_NAME} account. Your plan renews by itself until you cancel. To stop the next
             charge, cancel at least 1 day before it renews, in your {STORE_NAME} settings.
           </T>
@@ -269,10 +291,14 @@ export default function Subscribe() {
 
       {/* Pilot families need the code here too, including when their circle is full. */}
       {!upgrading || !PURCHASES_AVAILABLE ? (
-        <>
-          <Gap />
-          {pilotCode}
-        </>
+        codeOpen ? (
+          <>
+            <Gap />
+            {pilotCode}
+          </>
+        ) : (
+          <Button label="Have a pilot code?" variant="quiet" onPress={() => setCodeOpen(true)} disabled={!!busy} />
+        )
       ) : null}
 
       <Button label="Not now" variant="quiet" onPress={() => router.replace("/")} disabled={!!busy} />
@@ -280,9 +306,103 @@ export default function Subscribe() {
   );
 }
 
+// A glimpse of what the circle sees each day. An example, not real data.
+function FeedPreview({ name }: { name: string }) {
+  return (
+    <View style={styles.preview} accessible accessibilityLabel={`For example: ${name} checked in at 9:58 AM and said "Love you!"`}>
+      <T variant="small" tone="muted">
+        Each day, your circle sees
+      </T>
+      <View style={styles.previewRow}>
+        <Icon name={icons.done} size={40} color={colors.done} />
+        <View style={styles.previewText}>
+          <T variant="heading">{name === "You" ? "You checked in" : `${name} checked in`}</T>
+          <T variant="small" tone="muted">
+            9:58 AM today
+          </T>
+        </View>
+      </View>
+      <T variant="heading">&ldquo;Love you!&rdquo;</T>
+    </View>
+  );
+}
+
+// One plan, as a card the person taps to pick.
+function PlanCard({
+  title,
+  price,
+  description,
+  badge,
+  selected,
+  onPress,
+}: {
+  title: string;
+  price: string;
+  description: string;
+  badge: string | null;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={[title, price, description, badge].filter(Boolean).join(", ")}
+      style={[styles.plan, selected && styles.planSelected]}
+    >
+      {badge ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeLabel}>{badge}</Text>
+        </View>
+      ) : (
+        <View style={styles.badgeSpace} />
+      )}
+      <T variant="heading">{title}</T>
+      <Text style={styles.planPrice}>{price}</Text>
+      <T variant="small" tone="muted">
+        {description}
+      </T>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  benefits: { gap: space.xs },
-  benefit: { flexDirection: "row", gap: space.sm },
+  benefits: { gap: space.sm },
+  benefit: { flexDirection: "row", alignItems: "center", gap: space.sm },
   benefitText: { flex: 1 },
   links: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  preview: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: space.md + 4,
+    gap: space.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadow,
+  },
+  previewRow: { flexDirection: "row", alignItems: "center", gap: space.md },
+  previewText: { flex: 1 },
+  plans: { flexDirection: "row", gap: space.sm },
+  plan: {
+    flex: 1,
+    padding: space.md,
+    gap: space.xs,
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  planSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  planPrice: { fontFamily: fonts.heavy, fontSize: 22, lineHeight: 28, color: colors.ink },
+  badge: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.warm,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.sm + 2,
+    paddingVertical: 3,
+  },
+  // The badge's text sits on the warm accent, so it's always dark ink for contrast.
+  badgeLabel: { fontFamily: fonts.bold, fontSize: 14, color: "#1A0F0B" },
+  badgeSpace: { height: 25 },
 });

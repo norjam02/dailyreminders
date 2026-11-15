@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dailypulse",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.condorllc.dailypulse",
       "supportsTablet": false,
@@ -38,9 +38,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#EEF3F6",
+          "backgroundColor": "#F7F3EE",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 140
+          "imageWidth": 140,
+          "dark": {
+            "backgroundColor": "#0F161B",
+            "image": "./assets/images/splash-icon.png"
+          }
         }
       ],
       "expo-sqlite",
@@ -55,7 +59,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "DailyPulse uses the camera so you can send a photo or selfie when you check in.",
+          "cameraPermission": "DailyPulse uses the camera so you can send a photo or selfie when you check in, or take your circle's welcome photo.",
           "photosPermission": false,
           "microphonePermission": false
         }
