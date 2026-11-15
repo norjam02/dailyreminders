@@ -5,7 +5,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 
-import { Button, Card, ErrorText, Screen, T } from "@/components/ui";
+import { Button, Card, ErrorText, Screen, SignOutButton, T } from "@/components/ui";
 import { openManageSubscription, PURCHASES_AVAILABLE } from "@/lib/billing";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
@@ -183,6 +183,7 @@ export default function Members() {
         })}
       </View>
 
+      <SignOutButton disabled={deleting} />
       <Button label="Delete my account" variant="quiet" onPress={deleteAccount} busy={deleting} />
     </Screen>
   );

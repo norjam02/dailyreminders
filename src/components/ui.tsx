@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import {
   AccessibilityInfo,
+  Alert,
   Platform,
   ActivityIndicator,
   Pressable,
@@ -16,7 +17,9 @@ import {
   type TextStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { SymbolView, type SymbolViewProps } from "expo-symbols";
 
+import { useSession } from "@/lib/session";
 import { colors, fonts, radius, space, type } from "@/lib/theme";
 
 export function Screen({
@@ -261,6 +264,77 @@ export function ErrorText({ message }: { message: string | null }) {
   );
 }
 
+// A system icon: SF Symbols on iPhone, Material Symbols on Android. Icons are
+// decoration; the words next to them (or the button's label) say what they mean.
+export type IconName = Extract<SymbolViewProps["name"], { ios?: unknown }>;
+
+export function Icon({ name, size = 24, color = colors.ink }: { name: IconName; size?: number; color?: string }) {
+  return (
+    <SymbolView
+      name={name}
+      size={size}
+      tintColor={color}
+      type="hierarchical"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    />
+  );
+}
+
+export const icons = {
+  settings: { ios: "gearshape.fill", android: "settings" },
+  people: { ios: "person.2.fill", android: "group" },
+  done: { ios: "checkmark.circle.fill", android: "check_circle" },
+  missed: { ios: "exclamationmark.circle.fill", android: "error" },
+  waiting: { ios: "clock.fill", android: "schedule" },
+  upcoming: { ios: "sun.max.fill", android: "wb_sunny" },
+  streak: { ios: "flame.fill", android: "local_fire_department" },
+  camera: { ios: "camera.fill", android: "photo_camera" },
+  wave: { ios: "hand.wave.fill", android: "waving_hand" },
+  photo: { ios: "photo.fill", android: "image" },
+} satisfies Record<string, IconName>;
+
+// A round icon button for screen headers. 48 pt, with a spoken label.
+export function IconButton({ name, label, onPress }: { name: IconName; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      style={({ pressed }) => [styles.iconButton, pressed && { backgroundColor: colors.primarySoft }]}
+    >
+      <Icon name={name} size={24} color={colors.primary} />
+    </Pressable>
+  );
+}
+
+// Sign out, after a confirmation. People who joined with a code have no email,
+// so signing out means asking for a new code; the warning says so.
+export function SignOutButton({ disabled }: { disabled?: boolean }) {
+  const { session, signOut } = useSession();
+  const anonymous = !!session?.user.is_anonymous;
+  return (
+    <Button
+      label="Sign out"
+      variant="quiet"
+      disabled={disabled}
+      onPress={() =>
+        Alert.alert(
+          "Sign out?",
+          anonymous
+            ? "You joined with a code, so you'll need a new code from your circle to get back in."
+            : "You can sign back in any time with a code sent to your email.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Sign out", style: "destructive", onPress: () => void signOut() },
+          ],
+        )
+      }
+    />
+  );
+}
+
 export function Gap({ size = "md" }: { size?: keyof typeof space }) {
   return <View style={{ height: space[size] }} />;
 }
@@ -333,4 +407,12 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   error: { marginTop: space.xs },
+  iconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
 });

@@ -51,13 +51,14 @@ before(async () => {
   await db.query("insert into public.circle_access (circle_id, source) values ($1, 'manual')", [circle]);
   const parentCode = (await as(users.organizer, "select public.create_invite($1, 'parent') as code", [circle])).rows[0].code;
   await as(users.parent, "select public.redeem_invite($1, 'Mom')", [parentCode], { anonymous: true });
-  await as(users.organizer, "select public.approve_member($1, $2)", [circle, users.parent]);
   const caregiverCode = (await as(users.organizer, "select public.create_invite($1, 'caregiver') as code", [circle])).rows[0].code;
   await as(users.caregiver, "select public.redeem_invite($1, 'Pat')", [caregiverCode]);
   await as(users.organizer, "select public.approve_member($1, $2)", [circle, users.caregiver]);
 
   // One check-in a day at 10:00 in Chicago, normal firmness, one-hour wait.
   await as(users.organizer, "insert into public.checkin_plans (circle_id, timezone) values ($1, 'America/Chicago')", [circle]);
+  // Skip the setup notices (who joined), so each test sees only its own.
+  await newMessages();
 });
 
 after(async () => {

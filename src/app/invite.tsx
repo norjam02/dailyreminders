@@ -1,6 +1,7 @@
 // The organizer makes a one-time join code and shares it.
 
 import * as Clipboard from "expo-clipboard";
+import * as Linking from "expo-linking";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Share, StyleSheet, Text } from "react-native";
@@ -108,7 +109,8 @@ export default function Invite() {
         DOWNLOAD_URL
           ? `1. Get the free DailyPulse app: ${DOWNLOAD_URL}`
           : "1. Get the free DailyPulse app from the App Store or Google Play.",
-        `2. Open it, tap "I have a join code", and enter ${code}`,
+        `2. Tap this link to join: ${Linking.createURL("/join", { queryParams: { code } })}`,
+        `   Or open the app, tap "I have a join code", and enter ${code}`,
         "",
         "The code works once and expires in a day.",
       ].join("\n")
@@ -135,7 +137,11 @@ export default function Invite() {
             setCopied(true);
           }}
         />
-        <T tone="muted">You&apos;ll approve them once they join. Find them under My Circle.</T>
+        <T tone="muted">
+          {role === "parent"
+            ? "They're in as soon as they use the code, and you'll get a notification."
+            : "You'll get a notification when they join, and you approve them under My Circle."}
+        </T>
         <Button label="Make another code" variant="quiet" onPress={() => setCode(null)} />
       </Screen>
     );

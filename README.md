@@ -18,7 +18,7 @@ Ten parent and child pairs use this app for 14 days, starting Monday, November 1
 
 - **Roles.** Child, Parent, Caregiver, and Other family, chosen on first launch.
 - **Organizer.** The subscriber who sets up the circle and manages it. Anyone can be the organizer: the parent themselves, their child, a caregiver (for example a paid caregiver or a friend), or another family member. When the parent is the organizer, a missed check-in alerts the rest of the circle right away.
-- **Circles and join codes.** The organizer creates a circle and gets a short code for each person. Each code works once and expires after a day, and the organizer approves every new member.
+- **Circles and join codes.** The organizer creates a circle and gets a short code for each person. Each code works once and expires after a day. The person who checks in is in as soon as they use the code made for them; the organizer approves everyone else, and gets a notification when someone asks to join. The invite message includes a link (`dailypulse://join?code=…`) that opens the app with the code filled in.
 - **Check-in modes.** Button, photo, or selfie. The organizer picks the mode for each parent and can change it at any time. A parent who cannot manage a photo that day can tap a plain button instead, marked "button only."
 - **Photo prompts.** For photo mode: breakfast, the view from a window, the coffee cup, or anything.
 - **Schedule.** One to three check-ins a day, at times the organizer picks.
@@ -75,7 +75,7 @@ The backend is [Supabase](https://supabase.com): Postgres, sign-in, and photo st
 Access rules live in the database, so the app cannot get around them.
 
 - The organizer (the parent, a child, a caregiver, or other family) creates the circle, makes join codes, approves or removes people, and edits the plan. Other members, including other children and caregivers, cannot.
-- Anyone signs in and joins with a code, then waits as pending until the organizer approves them. Parents can sign in anonymously, with no email or password; organizers need a real account, since they own the subscription.
+- Anyone signs in and joins with a code. The person who checks in joins straight away with the code made for their role; everyone else waits as pending until the organizer approves them, and the organizer is notified. Parents can sign in anonymously, with no email or password; organizers need a real account, since they own the subscription.
 - Active members see the circle, its members, the plan, check-ins, and photos. Pending members see only the circle's name.
 - Only the parent answers check-ins and uploads photos, and only into their own circle.
 - Check-ins are created and escalated by the scheduler, which runs with the service role. The app cannot write them directly.
