@@ -133,7 +133,7 @@ describe("circles and joining", () => {
     assert.match(parentCode, /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/);
   });
 
-  test("an anonymous parent joins with the code and waits for approval", async () => {
+  test("an anonymous parent joins with their code and is in right away", async () => {
     const joined = await value(
       users.parent,
       "select public.redeem_invite($1, 'Mom')",
@@ -142,7 +142,12 @@ describe("circles and joining", () => {
     );
     assert.equal(joined, circle);
     const status = await value(users.parent, "select status from public.circle_members where user_id = $1", [users.parent]);
-    assert.equal(status, "pending");
+    assert.equal(status, "active");
+    const told = await db.query(
+      "select title, data->>'type' as type from public.notification_outbox where user_id = $1 order by id desc limit 1",
+      [users.child],
+    );
+    assert.deepEqual(told.rows, [{ title: "Mom joined", type: "member_joined" }]);
   });
 
   test("a code works only once", async () => {
@@ -182,9 +187,23 @@ describe("circles and joining", () => {
     );
   });
 
-  test("a pending parent sees the circle but not its check-ins", async () => {
-    assert.equal(await count(users.parent, "select id from public.circles where id = $1", [circle]), 1);
-    assert.equal(await count(users.parent, "select * from public.checkin_plans"), 0);
+  test("someone else who joins waits for approval, and the organizer is told", async () => {
+    const code = await value(users.child, "select public.create_invite($1, 'caregiver')", [circle]);
+    await as(users.caregiver, "select public.redeem_invite($1, 'Pat')", [code]);
+    const status = await value(users.caregiver, "select status from public.circle_members where user_id = $1", [users.caregiver]);
+    assert.equal(status, "pending");
+    const told = await db.query(
+      "select title, body, data->>'type' as type from public.notification_outbox where user_id = $1 order by id desc limit 1",
+      [users.child],
+    );
+    assert.deepEqual(told.rows, [
+      { title: "Pat wants to join Mom's circle", body: "Open DailyPulse to approve or decline.", type: "join_request" },
+    ]);
+  });
+
+  test("a pending person sees the circle but not its check-ins", async () => {
+    assert.equal(await count(users.caregiver, "select id from public.circles where id = $1", [circle]), 1);
+    assert.equal(await count(users.caregiver, "select * from public.checkin_plans"), 0);
   });
 
   test("the child sees who is waiting, including their name", async () => {
@@ -192,23 +211,20 @@ describe("circles and joining", () => {
       users.child,
       "select p.display_name from public.circle_members m join public.profiles p on p.id = m.user_id where m.status = 'pending'",
     );
-    assert.deepEqual(pending.rows, [{ display_name: "Mom" }]);
+    assert.deepEqual(pending.rows, [{ display_name: "Pat" }]);
   });
 
   test("only the organizer can approve", async () => {
     await assert.rejects(
-      as(users.parent, "select public.approve_member($1, $2)", [circle, users.parent]),
+      as(users.parent, "select public.approve_member($1, $2)", [circle, users.caregiver]),
       /Only the person who set up this circle can approve people/,
     );
-    await as(users.child, "select public.approve_member($1, $2)", [circle, users.parent]);
-    const status = await value(users.parent, "select status from public.circle_members where user_id = $1", [users.parent]);
+    await as(users.child, "select public.approve_member($1, $2)", [circle, users.caregiver]);
+    const status = await value(users.caregiver, "select status from public.circle_members where user_id = $1", [users.caregiver]);
     assert.equal(status, "active");
   });
 
-  test("a caregiver joins and is approved", async () => {
-    const code = await value(users.child, "select public.create_invite($1, 'caregiver')", [circle]);
-    await as(users.caregiver, "select public.redeem_invite($1, 'Pat')", [code]);
-    await as(users.child, "select public.approve_member($1, $2)", [circle, users.caregiver]);
+  test("the circle now has its child, parent, and caregiver", async () => {
     const roles = await as(users.caregiver, "select role from public.circle_members order by role");
     assert.deepEqual(roles.rows.map((r) => r.role), ["child", "parent", "caregiver"]);
   });
@@ -393,7 +409,6 @@ describe("circles and joining", () => {
 
       const parentCode = await value(users.organizingCaregiver, "select public.create_invite($1, 'parent')", [caregiverCircle]);
       await as(users.secondParent, "select public.redeem_invite($1, 'Dad')", [parentCode], { anonymous: true });
-      await as(users.organizingCaregiver, "select public.approve_member($1, $2)", [caregiverCircle, users.secondParent]);
 
       const childCode = await value(users.organizingCaregiver, "select public.create_invite($1, 'child')", [caregiverCircle]);
       await as(users.secondChild, "select public.redeem_invite($1, 'Alex')", [childCode]);

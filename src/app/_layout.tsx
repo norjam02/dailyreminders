@@ -42,6 +42,9 @@ function Navigator() {
     if (handledId.current === id) return;
     handledId.current = id;
     router.replace("/");
+    // Someone asking to join goes straight to where the organizer approves them.
+    const kind = lastResponse.notification.request.content.data?.type;
+    if (kind === "join_request") router.push("/members");
   }, [ready, lastResponse]);
 
   if (!ready) return null;

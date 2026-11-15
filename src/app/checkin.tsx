@@ -2,12 +2,23 @@
 // selfie, add a friendly reply if they like, or put it off once with Later.
 
 import { File } from "expo-file-system";
+import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { AccessibilityInfo, AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+  ZoomIn,
+} from "react-native-reanimated";
 
-import { Button, Card, Chip, Chips, ErrorText, Gap, Screen, T } from "@/components/ui";
+import { Button, Card, Chip, Chips, ErrorText, Gap, Icon, IconButton, icons, Screen, T, type IconName } from "@/components/ui";
+import { streakDays } from "@/lib/streak";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { colors, fonts, radius, space } from "@/lib/theme";
@@ -24,7 +35,7 @@ function promptText(plan: CheckinPlan): string {
 }
 
 export default function CheckinScreen() {
-  const { session, current, isOrganizer, isActive, signOut } = useSession();
+  const { session, current, isOrganizer, isActive } = useSession();
   const circleId = current?.circle.id;
   const organizerId = current?.circle.organizer_id;
 
@@ -36,12 +47,15 @@ export default function CheckinScreen() {
   const [busy, setBusy] = useState<"checkin" | "later" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [doneDays, setDoneDays] = useState<Pick<Checkin, "status" | "scheduled_for">[]>([]);
+  // Set when they check in on this screen, so the thank-you can celebrate.
+  const [justDone, setJustDone] = useState(false);
 
   const load = useCallback(async () => {
     if (!circleId || !session) return;
     const from = new Date(Date.now() - 18 * HOUR).toISOString();
     const to = new Date(Date.now() + 36 * HOUR).toISOString();
-    const [planResult, checkinResult, profileResult] = await Promise.all([
+    const [planResult, checkinResult, profileResult, streakResult] = await Promise.all([
       supabase.from("checkin_plans").select("*").eq("circle_id", circleId).maybeSingle(),
       supabase
         .from("checkins")
@@ -51,7 +65,14 @@ export default function CheckinScreen() {
         .lte("scheduled_for", to)
         .order("scheduled_for", { ascending: true }),
       supabase.from("profiles").select("id, display_name").in("id", [session.user.id, organizerId ?? session.user.id]),
+      supabase
+        .from("checkins")
+        .select("status, scheduled_for")
+        .eq("circle_id", circleId)
+        .eq("status", "done")
+        .gte("scheduled_for", new Date(Date.now() - 60 * 24 * HOUR).toISOString()),
     ]);
+    setDoneDays((streakResult.data as Pick<Checkin, "status" | "scheduled_for">[] | null) ?? []);
     setPlan((planResult.data as CheckinPlan | null) ?? null);
     setCheckins((checkinResult.data as Checkin[] | null) ?? []);
     const profiles = (profileResult.data ?? []) as { id: string; display_name: string }[];
@@ -103,6 +124,8 @@ export default function CheckinScreen() {
     });
     if (rpcError) throw rpcError;
     setReply(null);
+    setJustDone(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     AccessibilityInfo.announceForAccessibility("You checked in. Thank you.");
     await load();
   }
@@ -156,11 +179,21 @@ export default function CheckinScreen() {
     ? `Your next check-in is ${dayLabel(next.scheduled_for, zone).toLowerCase()} at ${clockTime(next.scheduled_for, zone)}.`
     : null;
 
+  const streak = streakDays(doneDays, zone, now);
+
   return (
     <Screen topInset onRefresh={() => load()} refreshing={false}>
-      <T variant="display">
-        {myName ? `Hi, ${myName}` : "Hi there"}
-      </T>
+      <View style={styles.header}>
+        <T variant="display" style={styles.headerTitle}>
+          {myName ? `Hi, ${myName}` : "Hi there"}
+        </T>
+        {isOrganizer ? (
+          <>
+            <IconButton name={icons.people} label="My Circle" onPress={() => router.push("/members")} />
+            <IconButton name={icons.settings} label="Check-in settings" onPress={() => router.push("/plan")} />
+          </>
+        ) : null}
+      </View>
 
       {isOrganizer && !isActive ? (
         <Card tone="attention">
@@ -194,6 +227,7 @@ export default function CheckinScreen() {
           ) : null}
 
           <BigButton
+            icon={plan.mode === "button" ? icons.wave : icons.camera}
             label={plan.mode === "button" ? "Check in" : wantsSelfie ? "Take a selfie" : "Take a photo"}
             busy={busy === "checkin"}
             onPress={() => checkIn(plan.mode)}
@@ -229,11 +263,22 @@ export default function CheckinScreen() {
         </>
       ) : lastDone && Date.now() - Date.parse(lastDone.scheduled_for) < 12 * HOUR ? (
         <>
-          <View style={[styles.big, styles.done]} accessible accessibilityLabel="You checked in">
-            <Text style={styles.bigLabel}>✓</Text>
+          <Animated.View
+            entering={justDone ? ZoomIn.springify().damping(14) : undefined}
+            style={[styles.big, styles.done]}
+            accessible
+            accessibilityLabel="You checked in"
+          >
+            <Icon name={icons.done} size={96} color={colors.onPrimary} />
             <Text style={styles.doneLabel}>You checked in</Text>
-          </View>
+          </Animated.View>
           <T>{who} will see it. Thank you.</T>
+          {streak >= 2 ? (
+            <View style={styles.streak} accessible accessibilityLabel={`${streak} days in a row`}>
+              <Icon name={icons.streak} size={28} color={colors.warm} />
+              <T variant="heading">{streak} days in a row</T>
+            </View>
+          ) : null}
           {nextLine ? <T tone="muted">{nextLine}</T> : null}
         </>
       ) : (
@@ -244,15 +289,6 @@ export default function CheckinScreen() {
         </>
       )}
 
-      {isOrganizer ? (
-        <>
-          <Gap size="lg" />
-          <Button label="Check-in settings" variant="secondary" onPress={() => router.push("/plan")} />
-          <Button label="My Circle" variant="secondary" onPress={() => router.push("/members")} />
-          <Button label="Sign out" variant="quiet" onPress={signOut} />
-        </>
-      ) : null}
-
       <Gap size="lg" />
       <T tone="muted" center>
         This isn&apos;t an emergency service. In an emergency, call 911.
@@ -261,27 +297,51 @@ export default function CheckinScreen() {
   );
 }
 
-function BigButton({ label, onPress, busy }: { label: string; onPress: () => void; busy: boolean }) {
+// The one thing to do. It breathes gently to draw the eye, unless the phone
+// asks for reduced motion.
+function BigButton({ label, icon, onPress, busy }: { label: string; icon: IconName; onPress: () => void; busy: boolean }) {
+  const reduceMotion = useReducedMotion();
+  const scale = useSharedValue(1);
+  useEffect(() => {
+    if (reduceMotion || busy) {
+      scale.value = withTiming(1);
+      return;
+    }
+    scale.value = withRepeat(withSequence(withTiming(1.03, { duration: 1100 }), withTiming(1, { duration: 1100 })), -1);
+  }, [reduceMotion, busy, scale]);
+  const breathe = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={busy}
-      accessibilityRole="button"
-      accessibilityState={{ busy }}
-      style={({ pressed }) => [styles.big, { backgroundColor: pressed ? colors.primaryPressed : colors.primary }]}
-    >
-      <Text style={styles.bigLabel}>{busy ? "One moment…" : label}</Text>
-    </Pressable>
+    <Animated.View style={breathe}>
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          onPress();
+        }}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ busy }}
+        style={({ pressed }) => [styles.big, { backgroundColor: pressed ? colors.primaryPressed : colors.primary }]}
+      >
+        {busy ? null : <Icon name={icon} size={64} color={colors.onPrimary} />}
+        <Text style={styles.bigLabel}>{busy ? "One moment…" : label}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  header: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  headerTitle: { flex: 1 },
+  streak: { flexDirection: "row", alignItems: "center", gap: space.sm },
   replies: { gap: space.xs },
   big: {
     minHeight: 220,
     borderRadius: radius.card * 2,
     alignItems: "center",
     justifyContent: "center",
+    gap: space.sm,
     padding: space.lg,
     marginVertical: space.sm,
   },

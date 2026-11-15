@@ -4,12 +4,12 @@ import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { Button, Gap, Screen, T } from "@/components/ui";
+import { Button, Gap, Screen, SignOutButton, T } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { space } from "@/lib/theme";
 
 export default function Waiting() {
-  const { current, refresh, signOut } = useSession();
+  const { current, refresh } = useSession();
   const [checking, setChecking] = useState(false);
 
   // Check every 15 seconds while this screen is open.
@@ -41,7 +41,7 @@ export default function Waiting() {
             setChecking(false);
           }}
         />
-        <Button label="Sign out" variant="quiet" onPress={signOut} />
+        <SignOutButton />
       </View>
     </Screen>
   );

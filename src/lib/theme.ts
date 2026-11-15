@@ -18,6 +18,8 @@ export const colors = {
   attention: "#9A5800",
   attentionSoft: "#FBEFD9",
   error: "#9B2C2C",
+  // The warm accent: streaks and celebrations. Decorative only, never text.
+  warm: "#E2583A",
 } as const;
 
 export const fonts = {

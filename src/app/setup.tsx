@@ -4,7 +4,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 
-import { Button, Choice, ErrorText, Field, Screen, Section, T } from "@/components/ui";
+import { Button, Choice, ErrorText, Field, Screen, Section, SignOutButton, T } from "@/components/ui";
 import { errorMessage, useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import type { MemberRole } from "@/lib/types";
@@ -18,7 +18,7 @@ const ROLES: { role: MemberRole; label: string; description: string }[] = [
 ];
 
 export default function Setup() {
-  const { refresh, signOut } = useSession();
+  const { refresh } = useSession();
   const [role, setRole] = useState<MemberRole | null>(null);
   const [parentName, setParentName] = useState("");
   const [yourName, setYourName] = useState("");
@@ -91,7 +91,7 @@ export default function Setup() {
       ) : null}
       <ErrorText message={error} />
       <Button label="Create the circle" onPress={create} busy={busy} />
-      <Button label="Sign out" variant="quiet" onPress={signOut} disabled={busy} />
+      <SignOutButton disabled={busy} />
     </Screen>
   );
 }

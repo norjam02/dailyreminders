@@ -1,7 +1,8 @@
 // Anyone joins a circle with a code. People without an account are signed in
-// anonymously, with no email or password.
+// anonymously, with no email or password. The invite message carries a link
+// (dailypulse://join?code=ABC123) that opens this screen with the code filled in.
 
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
 import { Button, ErrorText, Field, Screen, T } from "@/components/ui";
@@ -10,8 +11,10 @@ import { supabase } from "@/lib/supabase";
 
 export default function Join() {
   const { session, refresh } = useSession();
+  const params = useLocalSearchParams<{ code?: string }>();
+  const fromLink = cleanCode(params.code ?? "");
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(fromLink.length === 6 ? fromLink : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +51,11 @@ export default function Join() {
 
   return (
     <Screen>
-      <T tone="muted">Someone sent you a code to join their DailyPulse circle. Enter it here.</T>
+      <T tone="muted">
+        {code.length === 6 && code === fromLink
+          ? "Your join code is filled in. Add your name and tap Join."
+          : "Someone sent you a code to join their DailyPulse circle. Enter it here."}
+      </T>
       <Field
         label="Your name"
         hint="What your circle calls you, like Pat or Grandma."
@@ -61,7 +68,7 @@ export default function Join() {
         label="Join code"
         hint="6 letters and numbers, from your invite message."
         value={code}
-        onChangeText={(v) => setCode(v.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+        onChangeText={(v) => setCode(cleanCode(v))}
         autoCapitalize="characters"
         autoCorrect={false}
         maxLength={6}
@@ -72,4 +79,8 @@ export default function Join() {
       <Button label="Join" onPress={join} busy={busy} />
     </Screen>
   );
+}
+
+function cleanCode(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
